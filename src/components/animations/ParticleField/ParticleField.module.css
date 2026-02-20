@@ -1,0 +1,18 @@
+.field {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  background: white;
+  width: var(--size);
+  height: var(--size);
+  animation: particle-drift var(--duration) var(--ease-drift) infinite;
+  animation-delay: var(--delay);
+  will-change: transform, opacity;
+}

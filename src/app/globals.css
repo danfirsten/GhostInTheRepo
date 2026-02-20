@@ -225,6 +225,107 @@ body {
 }
 
 /* ----------------------------------------------------------
+   Global Keyframes
+   ---------------------------------------------------------- */
+
+/* Particle drift — ambient background particles */
+@keyframes particle-drift {
+  0%   { transform: translateY(0) translateX(0) scale(1); opacity: 0; }
+  10%  { opacity: var(--particle-opacity); }
+  90%  { opacity: var(--particle-opacity); }
+  100% { transform: translateY(-200px) translateX(var(--drift-x)) scale(0.5); opacity: 0; }
+}
+
+/* Shimmer sweep — loading / skeleton states */
+@keyframes shimmer {
+  from { background-position: -200% center; }
+  to   { background-position: 200% center; }
+}
+
+/* Page enter */
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+/* Page exit */
+@keyframes page-out {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-8px); }
+}
+
+/* Tooltip entrance */
+@keyframes tooltip-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---- Shimmer utility class ---- */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--surface) 0%,
+    var(--surface-raised) 40%,
+    var(--surface-float) 50%,
+    var(--surface-raised) 60%,
+    var(--surface) 100%
+  );
+  background-size: 200% auto;
+  animation: shimmer 1.5s linear infinite;
+}
+
+/* ---- Scroll reveal utility ---- */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 500ms var(--ease-enter),
+    transform 500ms var(--ease-enter);
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ---- Section header reveal ---- */
+.reveal-label {
+  opacity: 0;
+  transform: translateX(-16px);
+  transition: all 400ms var(--ease-enter);
+}
+
+.reveal-label.is-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.reveal-title {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: all 500ms var(--ease-enter) 100ms;
+}
+
+.reveal-title.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ----------------------------------------------------------
    Reduced Motion
    ---------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
@@ -238,5 +339,13 @@ body {
 
   html {
     scroll-behavior: auto;
+  }
+
+  /* Instantly show revealed content */
+  .reveal,
+  .reveal-label,
+  .reveal-title {
+    opacity: 1;
+    transform: none;
   }
 }
