@@ -1,0 +1,90 @@
+---
+title: "Understanding Memory Management"
+domain: "operating-systems"
+difficulty: "intermediate"
+publishedAt: "2025-12-15"
+summary: "How modern operating systems manage memory — from virtual address spaces to page tables and the mechanics of malloc."
+---
+
+Every program you run believes it has the entire machine's memory to itself. This is a lie — a beautifully engineered one. Understanding how operating systems create and maintain this illusion is fundamental to writing performant, correct software.
+
+## Virtual Address Spaces
+
+When a process starts, the OS hands it a *virtual address space* — a contiguous range of addresses that maps to physical memory through a layer of indirection. On a 64-bit system, this space is enormous (2^48 bytes on most architectures), though only a fraction is backed by real RAM at any given moment.
+
+The key insight: **virtual addresses are not physical addresses**. The CPU's Memory Management Unit (MMU) translates every memory access through page tables before it hits RAM.
+
+```c
+// This pointer holds a virtual address
+int *ptr = malloc(sizeof(int) * 1000);
+
+// The MMU translates ptr's address to physical RAM
+// transparently — your code never sees the real address
+*ptr = 42;
+```
+
+## Page Tables and Translation
+
+Memory is divided into fixed-size chunks called **pages** (typically 4KB). The OS maintains a page table for each process that maps virtual pages to physical frames.
+
+When your code accesses address `0x7fff5a3b1000`, the MMU:
+
+1. Extracts the page number from the upper bits
+2. Looks up the page table entry
+3. Combines the physical frame number with the page offset
+4. Accesses the actual RAM location
+
+This translation happens on *every single memory access*. To keep it fast, the CPU caches recent translations in a **Translation Lookaside Buffer (TLB)** — a small, blazing-fast associative cache.
+
+> A TLB miss is expensive. Programs with poor locality patterns thrash the TLB, causing performance to crater in ways that are invisible to most profiling tools.
+
+## The Mechanics of malloc
+
+When you call `malloc(1024)`, several layers of machinery activate:
+
+### User-space allocator
+
+The C library maintains a **heap** — a pool of memory it has already requested from the OS. `malloc` first tries to satisfy the request from this existing pool using algorithms like:
+
+- **Free lists**: linked lists of freed blocks, searched for a fit
+- **Buddy allocation**: splits power-of-two blocks for efficient merging
+- **Slab allocation**: pre-allocated pools for common sizes
+
+### Kernel allocation
+
+If the heap doesn't have enough space, the allocator calls `sbrk()` or `mmap()` to request more pages from the kernel. The kernel:
+
+1. Finds free physical frames
+2. Updates the process's page table
+3. Returns the new virtual address range
+
+```c
+// Under the hood, malloc might do something like:
+void *new_pages = mmap(
+    NULL,               // let kernel choose address
+    4096 * 16,          // request 64KB
+    PROT_READ | PROT_WRITE,
+    MAP_PRIVATE | MAP_ANONYMOUS,
+    -1, 0
+);
+```
+
+## Demand Paging
+
+Here's the clever part: the kernel doesn't actually allocate physical frames when `mmap` is called. It just updates the page table to say "this range is valid but not yet loaded." The first time you *touch* one of these pages, a **page fault** occurs:
+
+1. CPU raises a fault — "this page has no physical backing"
+2. Kernel catches the fault
+3. Kernel allocates a physical frame, zeros it, maps it
+4. Returns control to the process, which retries the access
+
+This lazy allocation means programs that allocate large buffers but only use small portions don't waste physical RAM.
+
+## Why This Matters
+
+Understanding memory management explains:
+
+- **Why `free()` doesn't always return memory to the OS** — the allocator keeps it in its internal free lists for future reuse
+- **Why memory-mapped files are fast** — the same page table mechanism maps file contents directly into virtual address space
+- **Why fork() is cheap** — copy-on-write shares page table entries until one process writes, triggering a page fault that copies just that page
+- **Why your program's "memory usage" in `top` is complicated** — RSS, VSZ, shared pages, and memory-mapped regions all tell different parts of the story

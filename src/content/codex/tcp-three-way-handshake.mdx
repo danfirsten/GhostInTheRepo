@@ -1,0 +1,106 @@
+---
+title: "The TCP Three-Way Handshake, Dissected"
+domain: "networking"
+difficulty: "beginner"
+publishedAt: "2025-12-20"
+summary: "What actually happens in those three packets that establish every TCP connection — and why each one matters."
+---
+
+Every HTTP request, every SSH session, every database query over the network starts the same way: three packets, exchanged in sequence, establishing a reliable connection between two machines. This is the TCP three-way handshake, and understanding it deeply unlocks insight into everything from connection timeouts to SYN flood attacks.
+
+## Why a Handshake at All?
+
+TCP provides **reliable, ordered, error-checked** delivery of data. But the underlying network (IP) provides none of these guarantees. Packets can arrive out of order, get duplicated, or vanish entirely.
+
+The handshake solves a fundamental problem: **both sides need to agree on initial sequence numbers** before data can flow reliably. Without this agreement, there's no way to detect missing or reordered packets.
+
+## The Three Packets
+
+### SYN (Client → Server)
+
+The client sends a TCP segment with the **SYN flag** set and a random **Initial Sequence Number (ISN)**:
+
+```
+Client → Server
+  Flags: SYN
+  Seq: 1000 (random ISN)
+  Ack: 0
+```
+
+This says: "I want to connect. My sequence numbers will start at 1000."
+
+The ISN is deliberately randomized to prevent **sequence prediction attacks** — if an attacker could guess the ISN, they could inject packets into an existing connection.
+
+### SYN-ACK (Server → Client)
+
+The server responds with both SYN and ACK flags set:
+
+```
+Server → Client
+  Flags: SYN, ACK
+  Seq: 5000 (server's random ISN)
+  Ack: 1001 (client's ISN + 1)
+```
+
+This says two things simultaneously:
+1. **ACK**: "I received your SYN. I'm expecting your next byte to be sequence 1001."
+2. **SYN**: "My sequence numbers will start at 5000."
+
+### ACK (Client → Server)
+
+The client completes the handshake:
+
+```
+Client → Server
+  Flags: ACK
+  Seq: 1001
+  Ack: 5001 (server's ISN + 1)
+```
+
+"I received your SYN-ACK. I'm expecting your next byte to be 5001. We're connected."
+
+## The State Machine
+
+Each side of the connection moves through well-defined states:
+
+**Client states:**
+- `CLOSED` → sends SYN → `SYN_SENT`
+- `SYN_SENT` → receives SYN-ACK, sends ACK → `ESTABLISHED`
+
+**Server states:**
+- `LISTEN` → receives SYN, sends SYN-ACK → `SYN_RECEIVED`
+- `SYN_RECEIVED` → receives ACK → `ESTABLISHED`
+
+> Most connection timeout errors happen in `SYN_SENT` — the client sent its SYN but never received a SYN-ACK. This usually means the server isn't listening on that port, a firewall dropped the packet, or the server is overloaded.
+
+## Why Three Packets? Why Not Two?
+
+Two packets would only let the server confirm it received the client's ISN. The third packet (client's ACK) is essential because:
+
+1. **The server needs confirmation that the client received the server's ISN**. Without this, the server has no way to know if the client is ready to interpret the server's sequence numbers.
+
+2. **It prevents "ghost connections" from old packets**. If a delayed SYN from a previous connection arrives at the server, the server sends a SYN-ACK. Without the third packet, the server would allocate resources for a connection that the client never intended.
+
+## SYN Flood Attacks
+
+Understanding the handshake reveals a classic vulnerability: **SYN floods**.
+
+When a server receives a SYN, it allocates memory for the half-open connection and waits for the final ACK. An attacker can exhaust server resources by sending thousands of SYN packets with spoofed source IPs — the SYN-ACKs go to machines that never requested a connection, so the final ACK never arrives.
+
+Defenses include:
+- **SYN cookies**: encode the connection state in the ISN itself, avoiding allocation until the handshake completes
+- **Connection rate limiting**: cap the number of half-open connections per source IP
+- **Firewall rules**: drop SYN packets that don't match expected patterns
+
+## Observing the Handshake
+
+You can watch the handshake happen in real-time with `tcpdump`:
+
+```bash
+# Capture the first 3 packets of a new connection to port 443
+sudo tcpdump -i eth0 -c 3 'tcp[tcpflags] & (tcp-syn|tcp-ack) != 0' port 443
+```
+
+Or with Wireshark, filter by `tcp.flags.syn == 1` to see all SYN and SYN-ACK packets on your network.
+
+Every connection you make — every API call, every page load, every `git push` — begins with these three carefully orchestrated packets. They are the foundation of reliable communication on the internet.

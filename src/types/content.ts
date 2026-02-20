@@ -44,8 +44,10 @@ export interface CodexArticle {
   slug: string;
   title: string;
   domain: string;
+  difficulty: "beginner" | "intermediate" | "advanced" | "arcane";
   readingTime: number;
   publishedAt: string;
+  summary: string;
   mdxPath: string;
 }
 

@@ -1,0 +1,256 @@
+/* ============================================================
+   Codex Article — Editorial Reading Experience
+   ============================================================ */
+
+/* ---- Reading Progress Bar ---- */
+.progressBar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 1px;
+  background: var(--spectral-1);
+  z-index: 9999;
+  transition: width 50ms linear;
+  will-change: width;
+}
+
+.progressBar[data-complete="true"] {
+  box-shadow: 0 0 8px var(--spectral-1), 0 0 16px rgba(167, 139, 250, 0.3);
+  animation: progressGlow 400ms ease-out;
+}
+
+@keyframes progressGlow {
+  0% {
+    box-shadow: 0 0 8px var(--spectral-1), 0 0 16px rgba(167, 139, 250, 0.5);
+    height: 2px;
+  }
+  100% {
+    box-shadow: 0 0 0 transparent;
+    height: 1px;
+  }
+}
+
+/* ---- Page Layout ---- */
+.page {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: var(--space-16) var(--space-6) var(--space-24);
+}
+
+/* ---- Back Link ---- */
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-ui);
+  font-size: var(--text-ui-sm);
+  color: var(--text-secondary);
+  text-decoration: none;
+  margin-bottom: var(--space-8);
+  transition: color 200ms var(--ease-standard);
+}
+
+.backLink:hover {
+  color: var(--spectral-2);
+}
+
+/* ---- Header ---- */
+.header {
+  margin-bottom: var(--space-10);
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4);
+  font-family: var(--font-ui);
+  font-size: var(--text-ui-xs);
+  color: var(--text-tertiary);
+}
+
+.metaDot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 2.5rem;
+  color: var(--text-primary);
+  line-height: 1.2;
+  margin-bottom: var(--space-6);
+}
+
+.hr {
+  border: none;
+  height: 1px;
+  background: var(--border-soft);
+}
+
+/* ---- MDX Content ---- */
+.content {
+  margin-top: var(--space-10);
+}
+
+/* Typography for rendered MDX */
+.content h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 2.5rem;
+  color: var(--text-primary);
+  line-height: 1.2;
+  margin: var(--space-12) 0 var(--space-6);
+}
+
+.content h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.75rem;
+  color: var(--text-primary);
+  line-height: 1.3;
+  margin: var(--space-12) 0 var(--space-4);
+  padding-left: var(--space-4);
+  border-left: 4px solid var(--spectral-1);
+}
+
+.content h3 {
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-primary);
+  margin: var(--space-8) 0 var(--space-3);
+}
+
+.content p {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 1.125rem;
+  line-height: 1.85;
+  color: var(--text-primary);
+  margin-bottom: var(--space-6);
+}
+
+.content strong {
+  font-weight: 600;
+  color: var(--ghost-white);
+}
+
+.content em {
+  font-style: italic;
+}
+
+.content a {
+  color: var(--spectral-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(125, 211, 252, 0.3);
+  transition: text-decoration-color 200ms;
+}
+
+.content a:hover {
+  text-decoration-color: var(--spectral-2);
+}
+
+/* Blockquote */
+.content blockquote {
+  border-left: 4px solid var(--spectral-1);
+  padding-left: var(--space-6);
+  margin: var(--space-8) 0;
+  font-style: italic;
+  color: var(--text-secondary);
+}
+
+.content blockquote p {
+  color: var(--text-secondary);
+}
+
+/* Lists */
+.content ul,
+.content ol {
+  margin: var(--space-4) 0 var(--space-6);
+  padding-left: var(--space-6);
+}
+
+.content ul {
+  list-style: disc;
+}
+
+.content ol {
+  list-style: decimal;
+}
+
+.content li {
+  font-family: var(--font-body);
+  font-size: 1.125rem;
+  line-height: 1.85;
+  color: var(--text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.content li::marker {
+  color: var(--spectral-1);
+}
+
+/* Inline code */
+.content code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  color: var(--spectral-2);
+  background: rgba(125, 211, 252, 0.08);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+/* Code blocks — override inline code style */
+.content pre {
+  margin: var(--space-6) 0;
+  border-radius: var(--radius-md);
+  overflow-x: auto;
+}
+
+.content pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  color: inherit;
+  font-size: var(--text-mono-md);
+}
+
+/* Horizontal rule */
+.content hr {
+  border: none;
+  height: 1px;
+  background: var(--border-soft);
+  margin: var(--space-10) 0;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 768px) {
+  .page {
+    padding: var(--space-12) var(--space-4) var(--space-16);
+  }
+
+  .title {
+    font-size: 2rem;
+  }
+
+  .content h1 {
+    font-size: 2rem;
+  }
+
+  .content h2 {
+    font-size: 1.5rem;
+  }
+
+  .content p,
+  .content li {
+    font-size: 1rem;
+  }
+}
