@@ -1,0 +1,83 @@
+.container {
+  width: 100%;
+  height: 100%;
+}
+
+.container svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* ---- Hover Card ---- */
+.hoverCard {
+  position: absolute;
+  z-index: 10;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  min-width: 200px;
+  max-width: 260px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  pointer-events: auto;
+  animation: card-in 150ms var(--ease-enter) both;
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hoverCardHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.hoverCardIcon {
+  color: var(--spectral-1);
+}
+
+.hoverCardTitle {
+  font-family: var(--font-ui);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ghost-white);
+}
+
+.hoverCardMeta {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-2);
+}
+
+.hoverCardPaths {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-3);
+}
+
+.hoverCardLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--spectral-2);
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.hoverCardLink:hover {
+  color: var(--ghost-white);
+}

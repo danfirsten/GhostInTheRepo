@@ -1,0 +1,112 @@
+/* ---- Path Accordion Card ---- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border-ghost);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.card:hover {
+  border-color: var(--border-subtle);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-5) var(--space-5);
+  cursor: pointer;
+  user-select: none;
+}
+
+.cardHeaderLeft {
+  flex: 1;
+}
+
+.cardName {
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ghost-white);
+  margin-bottom: 2px;
+}
+
+.cardDescription {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.chevron {
+  color: var(--text-tertiary);
+  transition: transform 300ms var(--ease-standard);
+  flex-shrink: 0;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+/* ---- Expandable Body ---- */
+.cardBody {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 300ms var(--ease-standard);
+}
+
+.cardBodyOpen {
+  max-height: 600px;
+}
+
+.cardBodyInner {
+  padding: 0 var(--space-5) var(--space-5);
+  border-top: 1px solid var(--border-ghost);
+  padding-top: var(--space-4);
+}
+
+/* ---- Node sequence ---- */
+.sequence {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.nodeRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.nodeIcon {
+  color: var(--spectral-1);
+  flex-shrink: 0;
+}
+
+.nodeLink {
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.nodeLink:hover {
+  color: var(--ghost-white);
+}
+
+.arrow {
+  display: flex;
+  align-items: center;
+  padding-left: 9px;
+  color: var(--text-tertiary);
+  font-size: 0.75rem;
+}
+
+.edgeLabel {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+  margin-left: var(--space-2);
+}
