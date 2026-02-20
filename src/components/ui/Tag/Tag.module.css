@@ -1,0 +1,55 @@
+.tag {
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: rgba(167, 139, 250, 0.12);
+  color: var(--spectral-1);
+  border: 1px solid rgba(167, 139, 250, 0.2);
+  display: inline-block;
+  white-space: nowrap;
+}
+
+/* ---- Difficulty Badges ---- */
+.badge {
+  font-family: var(--font-ui);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.beginner {
+  composes: badge;
+  background: rgba(52, 211, 153, 0.12);
+  color: var(--spectral-3);
+  border: 1px solid rgba(52, 211, 153, 0.2);
+}
+
+.intermediate {
+  composes: badge;
+  background: rgba(251, 146, 60, 0.12);
+  color: var(--spectral-5);
+  border: 1px solid rgba(251, 146, 60, 0.2);
+}
+
+.advanced {
+  composes: badge;
+  background: rgba(167, 139, 250, 0.12);
+  color: var(--spectral-1);
+  border: 1px solid rgba(167, 139, 250, 0.2);
+}
+
+.arcane {
+  composes: badge;
+  background: rgba(244, 114, 182, 0.12);
+  color: var(--spectral-4);
+  border: 1px solid rgba(244, 114, 182, 0.2);
+}

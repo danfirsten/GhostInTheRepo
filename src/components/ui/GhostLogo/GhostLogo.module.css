@@ -1,0 +1,52 @@
+.ghost {
+  display: inline-block;
+  cursor: pointer;
+  transition: filter 300ms var(--ease-spring), transform 300ms var(--ease-spring);
+  animation: ghost-float 5s var(--ease-drift) infinite;
+}
+
+.ghost:hover {
+  filter: drop-shadow(0 0 12px rgba(167, 139, 250, 0.6))
+    drop-shadow(0 0 24px rgba(167, 139, 250, 0.3));
+  transform: scale(1.06) translateY(-4px);
+}
+
+.ghost:active {
+  transform: scale(0.95);
+  transition: transform 100ms ease;
+}
+
+.eye {
+  transform-origin: center;
+  animation: blink 6s ease infinite;
+}
+
+.eyeRight {
+  animation-delay: 0.12s;
+}
+
+@keyframes ghost-float {
+  0% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  33% {
+    transform: translateY(-8px) rotate(0.5deg);
+  }
+  66% {
+    transform: translateY(-4px) rotate(-0.5deg);
+  }
+  100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+}
+
+@keyframes blink {
+  0%,
+  90%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
+}

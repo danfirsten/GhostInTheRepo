@@ -1,0 +1,74 @@
+.codeBlock {
+  background: #0A0E18;
+  border: 1px solid var(--border-ghost);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--border-ghost);
+}
+
+.lang {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+  letter-spacing: 0.05em;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.actionBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: none;
+  background: none;
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.actionBtn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.copied {
+  color: var(--spectral-3);
+  background: rgba(52, 211, 153, 0.12);
+}
+
+.body {
+  padding: 20px 24px;
+  overflow-x: auto;
+  tab-size: 2;
+}
+
+/* Override Shiki's pre/code styling */
+.body :global(pre) {
+  background: transparent !important;
+  margin: 0;
+  padding: 0;
+}
+
+.body :global(code) {
+  background: transparent !important;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+}

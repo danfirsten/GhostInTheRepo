@@ -1,0 +1,60 @@
+/* ---- Section Card ---- */
+.section {
+  background: var(--surface);
+  border: 1px solid var(--border-ghost);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.section:hover {
+  border-color: var(--border-subtle);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.sectionHeader {
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--spectral-1);
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border-ghost);
+}
+
+.entries {
+  padding: 4px 0;
+}
+
+/* ---- Entry Row ---- */
+.entry {
+  display: grid;
+  grid-template-columns: minmax(140px, 200px) 1fr;
+  gap: 0 24px;
+  padding: 9px 12px;
+  border-radius: 4px;
+  transition: background 150ms ease;
+}
+
+.entry:hover {
+  background: rgba(125, 211, 252, 0.05);
+}
+
+.entry:hover .command {
+  color: var(--ghost-white);
+}
+
+.command {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  color: var(--spectral-2);
+  font-weight: 500;
+  transition: color 150ms ease;
+}
+
+.description {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}

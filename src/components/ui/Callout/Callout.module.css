@@ -1,0 +1,72 @@
+.callout {
+  border-radius: var(--radius-lg);
+  padding: var(--space-5) var(--space-6);
+  margin: var(--space-6) 0;
+  border: 1px solid;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid;
+}
+
+.body {
+  font-family: var(--font-body);
+  font-size: var(--text-body-md);
+  color: var(--text-primary);
+  line-height: 1.7;
+}
+
+/* ---- Variants ---- */
+.keyInsight {
+  composes: callout;
+  background: rgba(125, 211, 252, 0.06);
+  border-color: rgba(125, 211, 252, 0.15);
+}
+
+.keyInsight .header {
+  color: var(--spectral-2);
+  border-bottom-color: rgba(125, 211, 252, 0.1);
+}
+
+.gotcha {
+  composes: callout;
+  background: rgba(251, 146, 60, 0.06);
+  border-color: rgba(251, 146, 60, 0.15);
+}
+
+.gotcha .header {
+  color: var(--spectral-5);
+  border-bottom-color: rgba(251, 146, 60, 0.1);
+}
+
+.mentalModel {
+  composes: callout;
+  background: rgba(167, 139, 250, 0.06);
+  border-color: rgba(167, 139, 250, 0.15);
+}
+
+.mentalModel .header {
+  color: var(--spectral-1);
+  border-bottom-color: rgba(167, 139, 250, 0.1);
+}
+
+.deepDive {
+  composes: callout;
+  background: rgba(244, 114, 182, 0.06);
+  border-color: rgba(244, 114, 182, 0.15);
+}
+
+.deepDive .header {
+  color: var(--spectral-4);
+  border-bottom-color: rgba(244, 114, 182, 0.1);
+}

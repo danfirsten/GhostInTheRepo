@@ -1,0 +1,161 @@
+/* ---- Shared ---- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border-ghost);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  border-radius: var(--radius-lg);
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  position: relative;
+  transition: background 200ms ease, border-color 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+}
+
+.card:hover {
+  background: var(--surface-raised);
+  border-color: var(--border-subtle);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.5),
+    0 1px 0 var(--border-soft) inset;
+  transform: translateY(-2px);
+}
+
+.card:hover .title {
+  color: var(--ghost-white);
+}
+
+.card:hover .arrow {
+  opacity: 1;
+}
+
+.card:hover .iconWrap {
+  animation: icon-shimmer 400ms ease;
+}
+
+@keyframes icon-shimmer {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.arrow {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  color: var(--spectral-1);
+  opacity: 0;
+  transition: opacity 150ms ease;
+  font-size: 1rem;
+}
+
+/* ---- Icon wrapper ---- */
+.iconWrap {
+  color: var(--spectral-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---- Small Card ---- */
+.small {
+  composes: card;
+  padding: var(--space-6);
+  min-width: 180px;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.small .iconWrap {
+  font-size: 32px;
+}
+
+/* ---- Medium Card ---- */
+.medium {
+  composes: card;
+  padding: 0;
+}
+
+.mediumTop {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-5) var(--space-3);
+}
+
+.mediumTop .iconWrap {
+  font-size: 40px;
+}
+
+.mediumMeta {
+  flex: 1;
+}
+
+.mediumDivider {
+  height: 1px;
+  background: var(--border-ghost);
+  margin: 0 var(--space-5);
+}
+
+.mediumSubtopics {
+  padding: var(--space-3) var(--space-5) var(--space-5);
+}
+
+.subtopicItem {
+  font-family: var(--font-body);
+  font-size: var(--text-body-sm);
+  color: var(--text-secondary);
+  padding: 2px 0;
+}
+
+.subtopicMore {
+  font-family: var(--font-body);
+  font-size: var(--text-body-sm);
+  color: var(--text-tertiary);
+  padding: 2px 0;
+}
+
+/* ---- Large Card ---- */
+.large {
+  composes: card;
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.large .iconWrap {
+  font-size: 48px;
+  filter: drop-shadow(0 0 8px var(--glow-violet));
+}
+
+/* ---- Typography ---- */
+.title {
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  transition: color 200ms ease;
+}
+
+.titleLarge {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  transition: color 200ms ease;
+}
+
+.count {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+}
+
+.descriptionText {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
