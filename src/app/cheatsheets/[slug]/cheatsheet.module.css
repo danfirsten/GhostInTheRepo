@@ -1,0 +1,168 @@
+/* ---- Cheatsheet Detail Page ---- */
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-6) var(--space-16);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-8);
+}
+
+.headerLeft {
+  flex: 1;
+}
+
+.breadcrumb {
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+  transition: color 150ms ease;
+}
+
+.breadcrumb:hover {
+  color: var(--text-secondary);
+}
+
+.domainName {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  font-weight: 700;
+  color: var(--ghost-white);
+  line-height: 1.15;
+}
+
+.cheatsheetLabel {
+  font-family: var(--font-ui);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--spectral-1);
+  margin-top: var(--space-1);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  padding-top: var(--space-6);
+}
+
+.actionBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-ghost);
+  border-radius: var(--radius-md);
+  background: transparent;
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+}
+
+.actionBtn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-subtle);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.actionBtnSuccess {
+  composes: actionBtn;
+  color: var(--spectral-3);
+  border-color: var(--spectral-3);
+  background: rgba(52, 211, 153, 0.08);
+}
+
+/* ---- Section Grid ---- */
+.sectionGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-6);
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 767px) {
+  .sectionGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .header {
+    flex-direction: column;
+  }
+
+  .actions {
+    padding-top: 0;
+  }
+}
+
+/* ---- Print Mode ---- */
+:global([data-print="true"]) .page {
+  background: #ffffff;
+  color: #000000;
+  max-width: 100%;
+}
+
+:global([data-print="true"]) .breadcrumb,
+:global([data-print="true"]) .actions {
+  display: none;
+}
+
+:global([data-print="true"]) .domainName {
+  color: #000000;
+}
+
+:global([data-print="true"]) .cheatsheetLabel {
+  color: #6b21a8;
+}
+
+:global([data-print="true"]) .sectionGrid {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+@media print {
+  .breadcrumb,
+  .actions {
+    display: none !important;
+  }
+
+  .page {
+    background: #ffffff !important;
+    color: #000000 !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+
+  .domainName {
+    color: #000000 !important;
+  }
+
+  .cheatsheetLabel {
+    color: #6b21a8 !important;
+  }
+
+  .sectionGrid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+}
+
+@media print and (max-width: 600px) {
+  .sectionGrid {
+    grid-template-columns: 1fr !important;
+  }
+}

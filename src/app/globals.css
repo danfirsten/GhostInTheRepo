@@ -349,3 +349,30 @@ body {
     transform: none;
   }
 }
+
+/* ----------------------------------------------------------
+   Print Mode (data-print attribute + @media print)
+   ---------------------------------------------------------- */
+[data-print="true"] body {
+  background: #ffffff !important;
+  background-image: none !important;
+  color: #000000;
+}
+
+[data-print="true"] nav,
+[data-print="true"] footer {
+  display: none !important;
+}
+
+@media print {
+  body {
+    background: #ffffff !important;
+    background-image: none !important;
+    color: #000000 !important;
+  }
+
+  nav,
+  footer {
+    display: none !important;
+  }
+}
