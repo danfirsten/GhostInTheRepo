@@ -1,0 +1,223 @@
+/* ---- Topic Page Layout ---- */
+.layout {
+  display: flex;
+  gap: var(--space-10);
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-6) var(--space-16);
+}
+
+/* ---- Content Column ---- */
+.content {
+  flex: 1;
+  min-width: 0;
+  max-width: 720px;
+}
+
+.breadcrumb {
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-bottom: var(--space-6);
+  transition: color 150ms ease;
+}
+
+.breadcrumb:hover {
+  color: var(--text-secondary);
+}
+
+.categoryLabel {
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--spectral-1);
+  margin-bottom: var(--space-2);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 700;
+  color: var(--ghost-white);
+  line-height: 1.15;
+  margin-bottom: var(--space-4);
+}
+
+.statsBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-8);
+  padding-bottom: var(--space-6);
+  border-bottom: 1px solid var(--border-ghost);
+}
+
+.statDot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--text-tertiary);
+}
+
+/* ---- Overview ---- */
+.overview {
+  font-family: var(--font-body);
+  font-size: 1.05rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin-bottom: var(--space-10);
+}
+
+/* ---- Section Headers ---- */
+.sectionLabel {
+  font-family: var(--font-ui);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--spectral-1);
+  margin-bottom: var(--space-4);
+  margin-top: var(--space-10);
+}
+
+/* ---- Cheatsheet Preview ---- */
+.cheatsheetPreview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.viewLink {
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--spectral-2);
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.viewLink:hover {
+  color: var(--ghost-white);
+}
+
+/* ---- Subtopic List ---- */
+.subtopicList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.subtopicRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  transition: background 150ms ease;
+}
+
+.subtopicRow:hover {
+  background: rgba(125, 211, 252, 0.04);
+}
+
+.subtopicTitle {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+/* ---- TOC Column ---- */
+.toc {
+  width: 240px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 80px;
+  align-self: flex-start;
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+}
+
+.tocTitle {
+  font-family: var(--font-ui);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-3);
+}
+
+.tocList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-8);
+}
+
+.tocItem {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+  text-decoration: none;
+  padding: 3px 0 3px var(--space-3);
+  border-left: 1px solid var(--border-ghost);
+  transition: color 150ms ease, border-color 150ms ease;
+}
+
+.tocItem:hover {
+  color: var(--text-secondary);
+}
+
+.tocItemActive {
+  composes: tocItem;
+  color: var(--ghost-white);
+  border-left-color: var(--spectral-1);
+}
+
+.relatedTitle {
+  composes: tocTitle;
+  margin-top: var(--space-6);
+}
+
+.relatedItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  padding: var(--space-1) 0;
+  transition: color 150ms ease;
+}
+
+.relatedItem:hover {
+  color: var(--ghost-white);
+}
+
+.relatedIcon {
+  color: var(--spectral-1);
+  flex-shrink: 0;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 1023px) {
+  .toc {
+    display: none;
+  }
+
+  .layout {
+    max-width: 720px;
+  }
+}

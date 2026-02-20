@@ -1,0 +1,163 @@
+/* ---- Topics Hub Layout ---- */
+.layout {
+  display: flex;
+  gap: var(--space-8);
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-10) var(--space-6) var(--space-16);
+}
+
+/* ---- Sidebar ---- */
+.sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 80px;
+  align-self: flex-start;
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+}
+
+.sidebarTitle {
+  font-family: var(--font-ui);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-1);
+}
+
+.sidebarItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border-left: 2px solid transparent;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+  text-decoration: none;
+  background: none;
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  width: 100%;
+  text-align: left;
+}
+
+.sidebarItem:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.sidebarItemActive {
+  composes: sidebarItem;
+  color: var(--ghost-white);
+  background: var(--surface);
+  border-left-color: var(--spectral-1);
+}
+
+.sidebarIcon {
+  color: var(--spectral-1);
+  flex-shrink: 0;
+}
+
+/* ---- Mobile pill filters ---- */
+.pillFilters {
+  display: none;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding: var(--space-4) var(--space-6);
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.pillFilters::-webkit-scrollbar {
+  display: none;
+}
+
+.pill {
+  flex-shrink: 0;
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border-ghost);
+  border-radius: var(--radius-full);
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.pill:hover {
+  border-color: var(--border-subtle);
+  color: var(--text-primary);
+}
+
+.pillActive {
+  composes: pill;
+  background: rgba(167, 139, 250, 0.12);
+  border-color: var(--spectral-1);
+  color: var(--ghost-white);
+}
+
+/* ---- Main content ---- */
+.main {
+  flex: 1;
+  min-width: 0;
+}
+
+.pageTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-display-md);
+  font-weight: 600;
+  color: var(--ghost-white);
+  margin-bottom: var(--space-2);
+}
+
+.pageSubtitle {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-8);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--space-6);
+}
+
+/* Featured card spans 2 columns */
+.featured {
+  grid-column: span 2;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 767px) {
+  .layout {
+    flex-direction: column;
+    gap: 0;
+    padding-top: var(--space-4);
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .pillFilters {
+    display: flex;
+  }
+
+  .featured {
+    grid-column: span 1;
+  }
+}
