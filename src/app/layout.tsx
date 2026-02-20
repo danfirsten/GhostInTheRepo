@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Fraunces, Syne, Epilogue, JetBrains_Mono } from "next/font/google";
+import { PageShell } from "@/components/layout/PageShell";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -55,7 +56,9 @@ export default function RootLayout({
       lang="en"
       className={`${fraunces.variable} ${syne.variable} ${epilogue.variable} ${jetbrainsMono.variable}`}
     >
-      <body>{children}</body>
+      <body>
+          <PageShell>{children}</PageShell>
+        </body>
     </html>
   );
 }
