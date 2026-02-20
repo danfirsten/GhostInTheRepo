@@ -1,0 +1,122 @@
+---
+title: "Transformers: From Attention to GPT"
+domain: "ai-ml"
+difficulty: "advanced"
+publishedAt: "2026-02-12"
+summary: "How the attention mechanism replaced recurrence and gave rise to the transformer architecture behind GPT and modern large language models."
+---
+
+For decades, sequence modeling meant recurrence. RNNs processed tokens one at a time, passing a hidden state forward like a game of telephone — and like telephone, the message degraded over distance. LSTMs and GRUs added gates to control what was remembered and forgotten, but the fundamental bottleneck remained: processing was sequential, and long-range dependencies faded into noise. Then, in 2017, a team at Google published a paper with a deceptively simple title — "Attention Is All You Need" — and the entire field pivoted.
+
+## The Problem with Recurrence
+
+An RNN processes a sequence step by step. At each timestep, it combines the current input with the previous hidden state to produce a new hidden state. This creates a chain of dependencies: to understand token 500, you must have processed tokens 1 through 499 first.
+
+This has two devastating consequences. First, **training cannot be parallelized** across sequence positions — each step depends on the last. Second, information from early tokens must survive hundreds of state transitions to influence later ones. Gradients either explode or vanish, and even LSTMs with their gating mechanisms struggle to maintain coherent information across sequences longer than a few hundred tokens.
+
+> The hidden state of an RNN is a fixed-size vector trying to compress an arbitrarily long history. Eventually, something has to give.
+
+## Attention as Information Retrieval
+
+The attention mechanism reimagines sequence processing as a retrieval problem. Instead of squeezing all history into a single vector, attention lets the model **look back at every previous position** and decide what is relevant right now.
+
+The mechanism works through three learned projections — **queries**, **keys**, and **values**:
+
+- **Query (Q)**: "What am I looking for?" — derived from the current position
+- **Key (K)**: "What do I contain?" — derived from every position in the sequence
+- **Value (V)**: "What information do I provide?" — also derived from every position
+
+The attention score between two positions is the dot product of the query and key, scaled and passed through softmax. This produces a weighted sum over the values.
+
+```python
+import numpy as np
+
+def scaled_dot_product_attention(Q, K, V):
+    # Q, K, V have shape (seq_len, d_k)
+    d_k = K.shape[-1]
+
+    # Dot product of queries and keys
+    scores = Q @ K.T / np.sqrt(d_k)  # (seq_len, seq_len)
+
+    # Softmax to get attention weights
+    weights = np.exp(scores) / np.exp(scores).sum(axis=-1, keepdims=True)
+
+    # Weighted sum of values
+    return weights @ V  # (seq_len, d_k)
+```
+
+The `sqrt(d_k)` scaling factor prevents dot products from growing too large in high dimensions, which would push softmax into regions with vanishing gradients. This seemingly minor detail was critical to making attention stable during training.
+
+## Multi-Head Attention
+
+A single attention pass captures one kind of relationship. But tokens relate to each other in many ways simultaneously — syntactically, semantically, positionally. **Multi-head attention** runs several attention operations in parallel, each with its own learned Q, K, V projections, then concatenates and projects the results.
+
+```python
+# Pseudocode for multi-head attention
+heads = []
+for i in range(num_heads):
+    Q_i = X @ W_q[i]  # Project into this head's query space
+    K_i = X @ W_k[i]
+    V_i = X @ W_v[i]
+    heads.append(scaled_dot_product_attention(Q_i, K_i, V_i))
+
+multi_head_output = np.concatenate(heads, axis=-1) @ W_o
+```
+
+With 8 or 16 heads, the model can simultaneously attend to nearby tokens for syntax, distant tokens for coreference, and everything in between. Each head learns to specialize without being explicitly told what to look for.
+
+## Positional Encoding: Why Order Matters
+
+Attention treats the input as a **set**, not a sequence — it has no inherent notion of position. The sentence "the cat sat on the mat" and "mat the on sat cat the" would produce identical attention scores without positional information.
+
+The original transformer injects position through sinusoidal encodings added to the input embeddings. Each position gets a unique pattern of sines and cosines at different frequencies:
+
+```python
+def positional_encoding(seq_len, d_model):
+    pos = np.arange(seq_len)[:, np.newaxis]
+    dim = np.arange(d_model)[np.newaxis, :]
+    angles = pos / (10000 ** (2 * (dim // 2) / d_model))
+    encoding = np.zeros((seq_len, d_model))
+    encoding[:, 0::2] = np.sin(angles[:, 0::2])
+    encoding[:, 1::2] = np.cos(angles[:, 1::2])
+    return encoding
+```
+
+Modern models often use **learned positional embeddings** or **rotary position embeddings (RoPE)**, which encode relative positions directly into the attention computation. RoPE has become the standard in most large language models because it generalizes better to sequence lengths not seen during training.
+
+## Encoder-Decoder: The Original Architecture
+
+The 2017 transformer was an **encoder-decoder** model, designed for sequence-to-sequence tasks like translation. The encoder processes the full input with bidirectional self-attention — every token can attend to every other token. The decoder generates output autoregressively, using **masked self-attention** (each token can only attend to previous tokens) plus **cross-attention** to the encoder output.
+
+This architecture was elegant but had more components than some tasks required.
+
+## GPT: Decoder-Only Simplification
+
+GPT (Generative Pre-Trained Transformer) stripped the architecture down to **just the decoder stack**. No encoder, no cross-attention — only masked self-attention layers stacked deep. The model is pre-trained on a single objective: **predict the next token**.
+
+```
+Input:  "The capital of France is"
+Target: "Paris"
+```
+
+This seemingly trivial objective turns out to be extraordinarily powerful. To predict the next token well across a massive corpus, the model must learn syntax, semantics, factual knowledge, reasoning patterns, and even elements of common sense. The training signal is dense — every token in every document provides a gradient update.
+
+## Scaling Laws
+
+Research from OpenAI and others revealed that transformer performance follows **predictable power laws** across three axes: model size (parameters), dataset size (tokens), and compute (FLOPs). Double the parameters with sufficient data and compute, and loss decreases by a predictable amount.
+
+This discovery transformed the field from architecture search to **scale engineering**. GPT-2 had 1.5 billion parameters. GPT-3 jumped to 175 billion. Each generation demonstrated emergent capabilities — abilities that appeared suddenly at certain scales rather than improving gradually.
+
+> Scaling laws do not tell you what a model will learn. They tell you that, statistically, a bigger model trained on more data will have lower loss. The specific capabilities that emerge from lower loss remain surprising.
+
+## From Prediction to Instruction Following
+
+A model trained purely on next-token prediction is a powerful text completer, but not a useful assistant. It will happily continue a prompt with plausible but unhelpful text. **Reinforcement Learning from Human Feedback (RLHF)** bridges this gap.
+
+The process works in stages. First, the pre-trained model is fine-tuned on curated instruction-response pairs (supervised fine-tuning). Then, human raters rank model outputs for quality, and a reward model is trained on these preferences. Finally, the language model is optimized against the reward model using reinforcement learning (typically PPO or DPO). The result is a model that still has the knowledge from pre-training but generates responses that humans find helpful, harmless, and honest.
+
+## The Core Insight
+
+The transformer's power comes from a single architectural bet: **direct connections between any two positions in a sequence**, mediated by learned attention. No recurrence, no convolution — just weighted information retrieval at every layer. This makes training massively parallel, eliminates the vanishing gradient problem for long-range dependencies, and scales predictably with compute.
+
+Every large language model in production today — GPT-4, Claude, Gemini, Llama — is a descendant of this architecture. The details vary (normalization strategies, activation functions, context length extensions), but the core remains: stack transformer blocks deep, train on next-token prediction at scale, and align to human preferences. The attention mechanism turned out to be, in fact, all you need.

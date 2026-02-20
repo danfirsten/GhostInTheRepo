@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "@phosphor-icons/react/dist/ssr";
+import { ArrowLeft, ArrowRight } from "@phosphor-icons/react/dist/ssr";
 import {
   getAllDomainSlugs,
   getDomain,
@@ -120,25 +120,29 @@ export default async function TopicPage({ params }: PageProps) {
         <div className={styles.sectionLabel}>Topics</div>
         <div className={styles.subtopicList}>
           {topics.map((topic) => (
-            <div key={topic.slug}>
-              <div className={styles.subtopicRow}>
+            <div key={topic.slug} id={topic.slug}>
+              <a
+                href={`/topics/${slug}/${topic.slug}`}
+                className={styles.topicLink}
+              >
                 <Icon size={18} weight="duotone" />
                 <span className={styles.subtopicTitle}>{topic.title}</span>
-              </div>
+                <ArrowRight
+                  size={14}
+                  weight="bold"
+                  className={styles.topicArrow}
+                />
+              </a>
               {topic.subtopics.length > 0 && (
                 <div style={{ paddingLeft: "var(--space-10)" }}>
                   {topic.subtopics.map((sub) => (
-                    <div key={sub.id} className={styles.subtopicRow}>
-                      <span
-                        className={styles.subtopicTitle}
-                        style={{
-                          fontSize: "0.85rem",
-                          color: "var(--text-secondary)",
-                        }}
-                      >
-                        {sub.title}
-                      </span>
-                    </div>
+                    <a
+                      key={sub.id}
+                      href={`/topics/${slug}/${topic.slug}#${sub.slug}`}
+                      className={styles.subLink}
+                    >
+                      {sub.title}
+                    </a>
                   ))}
                 </div>
               )}

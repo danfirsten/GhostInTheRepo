@@ -1,0 +1,271 @@
+---
+title: "TypeScript's Type System: A Deep Dive"
+domain: "languages"
+difficulty: "advanced"
+publishedAt: "2026-02-16"
+summary: "A tour of TypeScript's most powerful type-level features — from structural typing and generics to conditional types, branded types, and practical patterns that make large codebases safer."
+---
+
+Most developers learn TypeScript by adding type annotations to JavaScript — a string here, a number there, maybe an interface for an API response. This gets you 80% of the value. But TypeScript's type system is far deeper than annotations. It is a full computation language that runs at compile time, capable of expressing constraints that catch entire categories of bugs before your code ever executes. Understanding it deeply transforms how you design APIs and model domains.
+
+## Structural Typing: Shape Over Name
+
+TypeScript uses **structural typing**, not nominal typing. Two types are compatible if their shapes match, regardless of whether they share a name or declaration.
+
+```typescript
+interface Dog {
+  name: string;
+  breed: string;
+}
+
+interface Pet {
+  name: string;
+  breed: string;
+}
+
+const dog: Dog = { name: "Rex", breed: "Shepherd" };
+const pet: Pet = dog; // Works — same shape, different name
+```
+
+This is fundamentally different from Java or C#, where `Dog` and `Pet` would be incompatible unless one explicitly extends the other. Structural typing is more flexible but can lead to accidental compatibility — a problem we will address later with branded types.
+
+## Union and Intersection Types
+
+Unions (`|`) represent values that could be one of several types. Intersections (`&`) combine multiple types into one that has all their properties.
+
+```typescript
+type Result = Success | Failure;       // one or the other
+type AdminUser = User & AdminPerms;    // has everything from both
+```
+
+The real power of unions emerges with **discriminated unions** — union members that share a literal-typed property acting as a tag:
+
+```typescript
+type Shape =
+  | { kind: "circle"; radius: number }
+  | { kind: "rectangle"; width: number; height: number }
+  | { kind: "triangle"; base: number; height: number };
+
+function area(shape: Shape): number {
+  switch (shape.kind) {
+    case "circle":
+      return Math.PI * shape.radius ** 2;
+    case "rectangle":
+      return shape.width * shape.height;
+    case "triangle":
+      return 0.5 * shape.base * shape.height;
+  }
+}
+```
+
+TypeScript narrows the type inside each `case` branch automatically. Within the `"circle"` case, `shape.radius` is valid and `shape.width` would be an error. This is **type narrowing** — the compiler tracks control flow and refines types at each branch.
+
+## Exhaustive Switch Checks
+
+What happens if someone adds a new variant to `Shape` but forgets to handle it in `area`? Add a default branch that assigns to `never`:
+
+```typescript
+function area(shape: Shape): number {
+  switch (shape.kind) {
+    case "circle":
+      return Math.PI * shape.radius ** 2;
+    case "rectangle":
+      return shape.width * shape.height;
+    case "triangle":
+      return 0.5 * shape.base * shape.height;
+    default:
+      const _exhaustive: never = shape;
+      return _exhaustive;
+  }
+}
+```
+
+If a new variant is added without a corresponding case, `shape` in the default branch will not be assignable to `never`, and the compiler will flag it. This turns runtime "forgot to handle a case" bugs into compile-time errors.
+
+## Generics and Constraints
+
+Generics let you write functions and types that work over a range of types without losing type information:
+
+```typescript
+function first<T>(arr: T[]): T | undefined {
+  return arr[0];
+}
+
+const n = first([1, 2, 3]);      // type: number | undefined
+const s = first(["a", "b"]);     // type: string | undefined
+```
+
+**Constraints** restrict what types a generic can accept:
+
+```typescript
+function getProperty<T, K extends keyof T>(obj: T, key: K): T[K] {
+  return obj[key];
+}
+
+const user = { name: "Ada", age: 36 };
+getProperty(user, "name");  // returns string
+getProperty(user, "email"); // compile error — "email" is not in keyof user
+```
+
+The `extends keyof T` constraint ensures `K` must be a valid key of `T`. The return type `T[K]` is an **indexed access type** that resolves to the specific property type.
+
+## Conditional Types and `infer`
+
+Conditional types let you express type-level if/else logic:
+
+```typescript
+type IsString<T> = T extends string ? "yes" : "no";
+
+type A = IsString<string>;    // "yes"
+type B = IsString<number>;    // "no"
+```
+
+The `infer` keyword extracts types from within a pattern:
+
+```typescript
+type ReturnOf<T> = T extends (...args: any[]) => infer R ? R : never;
+
+type X = ReturnOf<() => string>;           // string
+type Y = ReturnOf<(x: number) => boolean>; // boolean
+```
+
+This is how TypeScript's built-in `ReturnType` utility actually works under the hood. The `infer R` acts as a type variable that captures whatever the return type happens to be.
+
+## Template Literal Types
+
+TypeScript can manipulate string types at the type level:
+
+```typescript
+type EventName = "click" | "scroll" | "keypress";
+type Handler = `on${Capitalize<EventName>}`;
+// "onClick" | "onScroll" | "onKeypress"
+```
+
+Combined with mapped types, this enables patterns like type-safe event systems and route parameter extraction:
+
+```typescript
+type ExtractParams<T extends string> =
+  T extends `${string}:${infer Param}/${infer Rest}`
+    ? { [K in Param]: string } & ExtractParams<Rest>
+    : T extends `${string}:${infer Param}`
+      ? { [K in Param]: string }
+      : {};
+
+type Params = ExtractParams<"/users/:userId/posts/:postId">;
+// { userId: string } & { postId: string }
+```
+
+## Mapped Types
+
+Mapped types iterate over keys to create new types. TypeScript's built-in utilities are mapped types:
+
+```typescript
+// Pick — select specific keys
+type Pick<T, K extends keyof T> = {
+  [P in K]: T[P];
+};
+
+// Partial — make all properties optional
+type Partial<T> = {
+  [P in keyof T]?: T[P];
+};
+
+// Record — create a type with specific keys and value type
+type Record<K extends keyof any, T> = {
+  [P in K]: T;
+};
+```
+
+You can add modifiers (`?`, `readonly`) or remove them (`-?`, `-readonly`). The `Required` utility, for instance, uses `-?` to strip optionality:
+
+```typescript
+type Required<T> = {
+  [P in keyof T]-?: T[P];
+};
+```
+
+## The `satisfies` Operator
+
+The `satisfies` operator, introduced in TypeScript 4.9, validates that a value conforms to a type **without widening it**:
+
+```typescript
+const palette = {
+  red: "#ff0000",
+  green: [0, 255, 0],
+} satisfies Record<string, string | number[]>;
+
+// palette.red is still string (not string | number[])
+// palette.green is still number[] (not string | number[])
+```
+
+Without `satisfies`, annotating the type with `Record` would widen each property to `string | number[]`. With `satisfies`, you get validation that the shape is correct while preserving the narrow, inferred types.
+
+## `as const` for Literal Types
+
+The `as const` assertion tells TypeScript to infer the narrowest possible type:
+
+```typescript
+const routes = ["home", "about", "contact"] as const;
+// type: readonly ["home", "about", "contact"]
+
+type Route = (typeof routes)[number]; // "home" | "about" | "contact"
+```
+
+Without `as const`, the type would be `string[]` and you lose all specificity. This pattern is essential for deriving union types from runtime values.
+
+## Branded Types for Domain Safety
+
+Remember structural typing? Sometimes you do not want two structurally identical types to be interchangeable. **Branded types** add a phantom property that exists only at the type level:
+
+```typescript
+type USD = number & { readonly __brand: "USD" };
+type EUR = number & { readonly __brand: "EUR" };
+
+function usd(amount: number): USD {
+  return amount as USD;
+}
+
+function eur(amount: number): EUR {
+  return amount as EUR;
+}
+
+function chargeUSD(amount: USD): void { /* ... */ }
+
+chargeUSD(usd(9.99));    // works
+chargeUSD(eur(9.99));    // compile error
+chargeUSD(9.99);         // compile error
+```
+
+The `__brand` property never exists at runtime — it is purely a compile-time discriminator. This pattern prevents an entire class of unit-mismatch bugs: mixing up user IDs with order IDs, confusing pixels with rems, or passing euros where dollars are expected.
+
+## The Builder Pattern with Generics
+
+Generics can accumulate type information across chained method calls:
+
+```typescript
+class QueryBuilder<T extends object = {}> {
+  private fields: string[] = [];
+
+  select<K extends string>(field: K): QueryBuilder<T & Record<K, unknown>> {
+    this.fields.push(field);
+    return this as any;
+  }
+
+  execute(): T[] {
+    // ... run query
+    return [] as T[];
+  }
+}
+
+const results = new QueryBuilder()
+  .select("name")
+  .select("age")
+  .execute();
+// type: ({ name: unknown } & { age: unknown })[]
+```
+
+Each `.select()` call adds a key to the accumulating type parameter. The final `execute()` returns an array typed with exactly the fields that were selected. The type grows with the chain.
+
+> TypeScript's type system is Turing-complete. This is not a goal — it is a consequence of its expressiveness. The practical implication is that some type-level computations can become slow or hard to debug. Use advanced types to catch real bugs, not to prove theorems.
+
+The power of TypeScript's type system lies not in any single feature but in how these features compose. Discriminated unions with exhaustive checks model state machines. Generics with constraints create reusable, safe abstractions. Branded types enforce domain boundaries. Template literal types parse strings at compile time. Together, they let you encode your domain's rules into the type system itself — shifting entire categories of errors from runtime crashes to red squiggles in your editor.

@@ -1,0 +1,108 @@
+---
+title: "Big-O Notation: The Language of Efficiency"
+domain: "fundamentals"
+difficulty: "beginner"
+publishedAt: "2026-01-05"
+summary: "What Big-O actually measures, why constants vanish at scale, and a practical tour from O(1) to O(n!) with real-world examples."
+---
+
+Before you can meaningfully compare two algorithms, you need a shared language for describing how they behave as input grows. Big-O notation is that language. It is not a timing benchmark, not a CPU instruction count, and not a measure of how fast your code runs on your laptop. It is a statement about **asymptotic growth** — how the number of operations scales relative to the size of the input, as that input approaches infinity.
+
+## What Big-O Actually Measures
+
+Big-O describes an **upper bound** on the growth rate of a function. When we say an algorithm is O(n log n), we mean that in the worst case, the number of operations grows no faster than some constant times n log n as n increases.
+
+Formally, f(n) is O(g(n)) if there exist constants c > 0 and n0 such that for all n >= n0:
+
+```
+f(n) <= c * g(n)
+```
+
+This definition reveals two critical features. First, **constants don't matter**. An algorithm that performs 5n operations and one that performs 500n operations are both O(n). At scale, the shape of the curve dominates. Second, **lower-order terms don't matter**. O(n^2 + 3n + 7) simplifies to O(n^2) because the quadratic term will eventually dwarf everything else.
+
+> Big-O is not about how fast your code runs today. It is about how your code's performance *changes* as the problem gets bigger. An O(n^2) algorithm on a supercomputer will eventually lose to an O(n log n) algorithm on a calculator — you just need a large enough n.
+
+## The Complexity Zoo: O(1) Through O(n!)
+
+Here is a tour of the most common complexity classes, each with a concrete example.
+
+**O(1) — Constant time.** The operation takes the same amount of time regardless of input size. Hash table lookups (amortized), array access by index, and pushing to the end of a dynamic array (amortized) are all O(1).
+
+```python
+# O(1) — hash table lookup
+user = users_by_id[42]
+```
+
+**O(log n) — Logarithmic.** The problem space halves with each step. Binary search is the classic example. Searching a sorted array of 1 billion elements takes at most ~30 comparisons.
+
+```python
+# O(log n) — binary search
+def binary_search(arr, target):
+    lo, hi = 0, len(arr) - 1
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        if arr[mid] == target:
+            return mid
+        elif arr[mid] < target:
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return -1
+```
+
+**O(n) — Linear.** You touch every element once. Finding the maximum in an unsorted array, summing a list, or scanning a linked list are all linear.
+
+**O(n log n) — Linearithmic.** The sweet spot for comparison-based sorting. Merge sort, heapsort, and well-implemented quicksort (average case) all land here. This is provably optimal for comparison sorts.
+
+```python
+# O(n log n) — merge sort
+def merge_sort(arr):
+    if len(arr) <= 1:
+        return arr
+    mid = len(arr) // 2
+    left = merge_sort(arr[:mid])
+    right = merge_sort(arr[mid:])
+    return merge(left, right)
+```
+
+**O(n^2) — Quadratic.** Nested loops over the input. Bubble sort, selection sort, and naive string matching are O(n^2). Doubles the input size and the runtime quadruples.
+
+**O(2^n) — Exponential.** Common in brute-force recursive solutions to combinatorial problems. The naive recursive Fibonacci is O(2^n). So is solving the Towers of Hanoi.
+
+**O(n!) — Factorial.** Generating all permutations of a set. Brute-forcing the Traveling Salesman Problem by checking every possible route. At n = 20, you are looking at roughly 2.4 quintillion operations.
+
+| Complexity | n = 10 | n = 100 | n = 1,000 | Example |
+|------------|--------|---------|-----------|---------|
+| O(1) | 1 | 1 | 1 | Hash lookup |
+| O(log n) | 3 | 7 | 10 | Binary search |
+| O(n) | 10 | 100 | 1,000 | Linear scan |
+| O(n log n) | 33 | 664 | 9,966 | Merge sort |
+| O(n^2) | 100 | 10,000 | 1,000,000 | Bubble sort |
+| O(2^n) | 1,024 | 1.27e30 | -- | Subset generation |
+| O(n!) | 3.6M | -- | -- | Permutation brute-force |
+
+## Common Pitfalls
+
+### Amortized vs. Worst-Case
+
+Dynamic arrays (like Python's `list` or Java's `ArrayList`) have O(1) *amortized* append. Most appends are constant time, but occasionally the array must resize, copying all elements — an O(n) operation. Averaged over a sequence of operations, the cost per operation converges to O(1). But if you need guaranteed per-operation bounds (say, in a real-time system), amortized O(1) is not the same as worst-case O(1).
+
+### Hidden Constants
+
+Big-O ignores constant factors, and sometimes those constants matter enormously. Merge sort is O(n log n) and insertion sort is O(n^2), but for small arrays (n < 20 or so), insertion sort is faster due to lower constant factors and better cache locality. This is why production sort implementations like Timsort use insertion sort for small runs.
+
+### Best Case Is Not Interesting
+
+Quicksort's best case is O(n log n), but its worst case is O(n^2) — which occurs when the pivot selection is consistently poor (e.g., already-sorted input with naive pivot choice). When analyzing algorithms, **worst-case** and **average-case** are what you should focus on. Best-case analysis is rarely useful.
+
+### Space Complexity Matters Too
+
+Big-O applies to space as well as time. Merge sort is O(n log n) time but uses O(n) extra space. An in-place quicksort uses O(log n) stack space. When memory is constrained, space complexity can be the deciding factor.
+
+## Practical Advice for Interviews and Design
+
+When someone asks "what's the time complexity?", they almost always mean the **worst-case time complexity** unless they specify otherwise. State it clearly, then mention the average case if it differs meaningfully (as with quicksort).
+
+When designing systems, think about which n values you will actually encounter. An O(n^2) algorithm on a list of 50 items is perfectly fine. An O(n log n) algorithm on a billion records is essential. The goal is not to always pick the theoretically fastest algorithm — it is to understand the tradeoffs and pick the right one for the scale you actually face.
+
+Big-O gives you the vocabulary to have that conversation.

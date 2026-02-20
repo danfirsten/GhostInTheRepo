@@ -1,0 +1,132 @@
+---
+title: "What Your SQL Query Planner Actually Does"
+domain: "databases"
+difficulty: "intermediate"
+publishedAt: "2026-01-20"
+summary: "How a SQL database transforms your query into an execution plan — parsing, cost-based optimization, join strategies, and reading EXPLAIN output."
+---
+
+You write a SQL query. The database returns rows. Between those two events, an extraordinary amount of machinery activates: parsing, rewriting, planning, costing, and execution. The query planner is the component that decides *how* to execute your query, and its decisions can mean the difference between a 2ms response and a 20-second table lock. Understanding what it does — and why it sometimes makes choices that surprise you — is essential for writing performant SQL.
+
+## The Pipeline: Parse, Plan, Execute
+
+Every SQL query passes through three stages.
+
+**Parsing** transforms the SQL text into an abstract syntax tree (AST). This is where syntax errors are caught — missing commas, unknown keywords, unbalanced parentheses.
+
+**Planning** (also called optimization) takes the AST and produces an **execution plan** — a tree of physical operations (scans, joins, sorts, aggregations) that will retrieve the requested data. The planner evaluates multiple candidate plans and picks the one with the lowest estimated cost.
+
+**Execution** runs the chosen plan, reading pages from disk or buffer cache, joining rows, applying filters, and streaming results back to the client.
+
+The planner is where the interesting decisions happen.
+
+## Cost-Based Optimization
+
+The planner does not just pick "an" approach — it enumerates possible strategies and assigns each a **cost estimate** based on the expected number of disk I/O operations, CPU cycles, and memory usage. These estimates rely on **table statistics**: row counts, column cardinality, value distribution histograms, and index metadata.
+
+```sql
+-- PostgreSQL: update statistics for the planner
+ANALYZE orders;
+```
+
+When statistics are stale, the planner makes bad decisions. This is the single most common cause of query performance regressions after bulk data loads. Run `ANALYZE` (PostgreSQL) or `UPDATE STATISTICS` (SQL Server) after significant data changes.
+
+## Scan Strategies
+
+The most fundamental decision is how to read rows from a table.
+
+**Sequential scan** reads every page of the table in order. This is the fallback when no useful index exists, or when the planner estimates that a large fraction of rows will match the filter. Sequential scans benefit from OS read-ahead and are surprisingly fast for full-table reads.
+
+**Index scan** uses a B-tree (or other index structure) to locate specific rows, then fetches those rows from the table. This is efficient when the query is selective — returning a small fraction of the table.
+
+**Index-only scan** satisfies the query entirely from the index, without touching the table at all. This is possible when every column the query needs is included in the index (a "covering index").
+
+```sql
+-- This might use an index scan on idx_orders_customer_id
+SELECT * FROM orders WHERE customer_id = 42;
+
+-- This might use an index-only scan if (customer_id, total) is indexed
+SELECT customer_id, total FROM orders WHERE customer_id = 42;
+
+-- This will almost certainly sequential scan — too many rows match
+SELECT * FROM orders WHERE total > 0;
+```
+
+> The planner may ignore your index even when one exists. If the query will touch more than roughly 10-20% of the table, a sequential scan is often faster because it avoids the random I/O overhead of jumping between index pages and data pages.
+
+## Join Algorithms
+
+When a query joins two tables, the planner selects from three primary algorithms.
+
+**Nested loop join**: for each row in the outer table, scan the inner table for matches. Simple and efficient when the outer table is small and the inner table has an index on the join key. Cost: O(n * m) without an index, O(n * log m) with one.
+
+**Hash join**: build a hash table from the smaller table, then probe it with each row from the larger table. Excellent for equi-joins on large unsorted tables. Requires enough memory to hold the hash table; if it spills to disk, performance degrades.
+
+**Merge join** (sort-merge join): sort both tables on the join key, then walk through them in parallel. Efficient when both inputs are already sorted (e.g., from an index) or when the result of the join needs to be sorted anyway.
+
+```
+-- Nested loop: small outer, indexed inner
+orders (100 rows) JOIN customers (1M rows) ON orders.customer_id = customers.id
+
+-- Hash join: large unsorted tables, equi-join
+events (5M rows) JOIN sessions (2M rows) ON events.session_id = sessions.id
+
+-- Merge join: both sides indexed or pre-sorted
+transactions JOIN accounts ON transactions.account_id = accounts.id
+  (both have B-tree indexes on the join key)
+```
+
+## Reading EXPLAIN Output
+
+The `EXPLAIN` command reveals the planner's chosen strategy. `EXPLAIN ANALYZE` actually executes the query and shows real timings alongside the estimates.
+
+```sql
+EXPLAIN ANALYZE
+SELECT o.id, c.name, o.total
+FROM orders o
+JOIN customers c ON o.customer_id = c.id
+WHERE o.total > 100
+ORDER BY o.total DESC
+LIMIT 20;
+```
+
+A typical PostgreSQL output (simplified):
+
+```
+Limit  (cost=1524.12..1524.17 rows=20)
+  -> Sort  (cost=1524.12..1536.45 rows=4932)
+       Sort Key: o.total DESC
+       -> Hash Join  (cost=289.00..1398.64 rows=4932)
+             Hash Cond: (o.customer_id = c.id)
+             -> Seq Scan on orders o  (cost=0.00..1034.00 rows=4932)
+                   Filter: (total > 100)
+             -> Hash  (cost=164.00..164.00 rows=10000)
+                   -> Seq Scan on customers c  (cost=0.00..164.00 rows=10000)
+```
+
+Read it bottom-up. The planner builds a hash table from `customers`, sequentially scans `orders` filtering for `total > 100`, probes the hash table to join, sorts the result, and takes the top 20 rows. The `cost` numbers are in arbitrary units — what matters is comparing them between alternative plans.
+
+Key things to look for in `EXPLAIN ANALYZE` output:
+
+- **Estimated vs actual row counts.** Large discrepancies mean stale statistics.
+- **Seq Scan on large tables with small result sets.** Probably a missing index.
+- **Sort operations on large data sets.** Consider whether an index could eliminate the sort.
+- **Nested loops with high loop counts.** The inner side is being scanned many times.
+
+## Why the Planner Ignores Your Index
+
+This is the question that generates the most frustration. Common reasons:
+
+**Low selectivity.** If the query matches most of the table, sequential scan wins. An index scan has overhead per row (traversing the B-tree, then random I/O to the heap) that exceeds the cost of just reading the table linearly.
+
+**Type mismatch.** If the column is `integer` but your WHERE clause passes a `text` value, the planner cannot use the index because it must cast every row.
+
+**Function wrapping.** `WHERE UPPER(name) = 'ALICE'` cannot use a standard index on `name`. You need a functional index: `CREATE INDEX idx_name_upper ON users (UPPER(name))`.
+
+**Stale statistics.** The planner thinks the table has 100 rows when it has 10 million. Run `ANALYZE`.
+
+**Correlated columns.** The planner assumes column values are independent. If `city = 'Paris'` AND `country = 'France'` are correlated (they obviously are), the planner will underestimate the selectivity of the combined condition. Extended statistics (`CREATE STATISTICS`) can help in PostgreSQL.
+
+## Practical Habits
+
+Make `EXPLAIN ANALYZE` a reflex for any query that touches production data at scale. Read the plan before adding indexes — you might discover the bottleneck is a sort, a bad join order, or a missing filter pushdown rather than a missing index. Keep statistics fresh. And remember that the planner is usually right. When it makes a choice you disagree with, check your assumptions before reaching for query hints.

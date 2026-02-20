@@ -1,0 +1,185 @@
+---
+title: "The Only Design Patterns That Actually Matter"
+domain: "software-engineering"
+difficulty: "intermediate"
+publishedAt: "2026-02-01"
+summary: "A pragmatic guide to the five design patterns that show up constantly in modern code — and the ones you should stop forcing."
+---
+
+The Gang of Four catalogued 23 design patterns in 1994. In the three decades since, a cottage industry of over-engineering has bloomed around them. Engineers reach for Abstract Factory when a function would do. They implement Visitor in codebases that will never need double dispatch. The patterns have become a kind of cargo cult — applied for their own sake rather than to solve real problems.
+
+Here is a more honest accounting: about five of those patterns appear frequently in modern codebases, and understanding them deeply is worth more than memorizing all 23.
+
+## Strategy: Swap Behavior at Runtime
+
+The Strategy pattern lets you define a family of algorithms and swap them interchangeably. In practice, this is everywhere — and in many languages, it's just "pass a function."
+
+```typescript
+type SortStrategy<T> = (a: T, b: T) => number;
+
+function sortUsers(users: User[], strategy: SortStrategy<User>): User[] {
+  return [...users].sort(strategy);
+}
+
+// Swap behavior without changing the function
+const byName: SortStrategy<User> = (a, b) => a.name.localeCompare(b.name);
+const byDate: SortStrategy<User> = (a, b) => a.createdAt - b.createdAt;
+
+sortUsers(users, byName);
+sortUsers(users, byDate);
+```
+
+In languages with first-class functions, Strategy collapses to "accept a callback." The pattern is still real — you are still decoupling an algorithm from the code that uses it — but the implementation is lightweight. No `StrategyInterface`, no `ConcreteStrategyA`, no UML diagram. Just a function parameter.
+
+**When it earns its keep:** Validation rules, sorting/filtering logic, pricing calculations, authentication strategies, serialization formats. Anywhere behavior varies but the surrounding structure stays the same.
+
+## Observer: Decouple Events from Handlers
+
+The Observer pattern lets an object notify a list of dependents when its state changes, without knowing who those dependents are. This is the backbone of every event system you have ever used.
+
+```typescript
+class EventEmitter<T extends Record<string, unknown[]>> {
+  private listeners = new Map<keyof T, Set<Function>>();
+
+  on<K extends keyof T>(event: K, fn: (...args: T[K]) => void) {
+    if (!this.listeners.has(event)) this.listeners.set(event, new Set());
+    this.listeners.get(event)!.add(fn);
+  }
+
+  emit<K extends keyof T>(event: K, ...args: T[K]) {
+    this.listeners.get(event)?.forEach((fn) => fn(...args));
+  }
+}
+
+// Usage
+type Events = { "user:login": [User]; "cart:update": [CartItem[]] };
+const bus = new EventEmitter<Events>();
+
+bus.on("user:login", (user) => analytics.track("login", user.id));
+bus.on("user:login", (user) => notifications.sendWelcome(user));
+```
+
+DOM events, Node.js EventEmitter, React's state-and-effect model, RxJS observables, webhook systems, message queues — Observer is embedded so deeply in modern software that you use it without thinking.
+
+> The pattern's power is also its danger. Overuse creates invisible coupling: something changes state somewhere, and effects cascade through a web of listeners that are hard to trace and harder to debug. Use it deliberately.
+
+## Factory: Decouple Creation from Use
+
+When object construction is complex, conditional, or likely to change, move it behind a factory. The consuming code asks for what it needs without knowing how it is built.
+
+```typescript
+interface Logger {
+  log(message: string): void;
+}
+
+function createLogger(env: string): Logger {
+  if (env === "production") {
+    return new CloudWatchLogger({ region: "us-east-1" });
+  }
+  if (env === "test") {
+    return new SilentLogger();
+  }
+  return new ConsoleLogger({ colorize: true });
+}
+
+// Consumer doesn't know or care which implementation it gets
+const logger = createLogger(process.env.NODE_ENV);
+logger.log("Application started");
+```
+
+This is not `AbstractFactoryFactoryBean`. It is a function that returns different implementations based on context. The principle — **separate creation from use** — is what matters, not the class hierarchy that the GoF book describes.
+
+**When it earns its keep:** Database connections, HTTP clients, loggers, feature-flagged components, cross-platform adapters. Anywhere the concrete type depends on runtime configuration.
+
+## Decorator: Wrap to Extend
+
+The Decorator pattern wraps an object to add behavior without modifying the original. In functional code, this is composition; in OOP, it is wrapping.
+
+```typescript
+interface HttpClient {
+  fetch(url: string): Promise<Response>;
+}
+
+function withRetry(client: HttpClient, retries = 3): HttpClient {
+  return {
+    async fetch(url: string) {
+      for (let attempt = 0; attempt < retries; attempt++) {
+        try {
+          return await client.fetch(url);
+        } catch (err) {
+          if (attempt === retries - 1) throw err;
+          await sleep(2 ** attempt * 100);
+        }
+      }
+      throw new Error("unreachable");
+    },
+  };
+}
+
+function withLogging(client: HttpClient): HttpClient {
+  return {
+    async fetch(url: string) {
+      console.log(`Fetching: ${url}`);
+      const res = await client.fetch(url);
+      console.log(`Response: ${res.status}`);
+      return res;
+    },
+  };
+}
+
+// Stack decorators — each layer adds behavior
+const client = withLogging(withRetry(baseClient));
+```
+
+Express/Koa middleware, Python decorators (`@app.route`), higher-order components in React, and Java's `BufferedReader(new FileReader(...))` are all Decorator in practice. The shape is always the same: take a thing, return the same kind of thing, with something extra.
+
+## Repository: Abstract Data Access
+
+The Repository pattern provides a collection-like interface for accessing domain objects, hiding the persistence mechanism behind it.
+
+```typescript
+interface UserRepository {
+  findById(id: string): Promise<User | null>;
+  findByEmail(email: string): Promise<User | null>;
+  save(user: User): Promise<void>;
+}
+
+class PostgresUserRepository implements UserRepository {
+  async findById(id: string) {
+    const row = await this.db.query("SELECT * FROM users WHERE id = $1", [id]);
+    return row ? this.toDomain(row) : null;
+  }
+  // ...
+}
+
+class InMemoryUserRepository implements UserRepository {
+  private users = new Map<string, User>();
+
+  async findById(id: string) {
+    return this.users.get(id) ?? null;
+  }
+  // ...
+}
+```
+
+Repository is not in the original GoF catalog — it comes from Domain-Driven Design — but it is arguably more relevant to modern application development than half the GoF patterns. It makes your business logic testable (swap in-memory for Postgres in tests), it centralizes query logic, and it prevents SQL from leaking into service layers.
+
+## The Anti-Patterns
+
+**Singleton abuse.** Singleton is the pattern that developers learn first and overuse the most. Global mutable state dressed in a class is still global mutable state. It makes testing painful, introduces hidden coupling, and creates concurrency hazards. Use dependency injection instead — pass the thing explicitly rather than reaching for a global.
+
+**Over-abstraction.** Not everything needs a pattern. If your feature has one implementation and no realistic prospect of a second, wrapping it in a Strategy/Factory/Interface is premature abstraction. You are not future-proofing; you are adding indirection that makes the code harder to read today for a tomorrow that may never arrive.
+
+> The best time to introduce a pattern is the second time you need it. The first time, write the simplest thing that works. When duplication or rigidity appears, *then* refactor toward a pattern with concrete evidence guiding you.
+
+## When Not to Use Patterns
+
+Patterns are solutions to recurring problems. If the problem is not present, the pattern is overhead. Ask yourself:
+
+- **Is there actual variation?** If there is only one algorithm, Strategy adds nothing.
+- **Is there actual complexity in creation?** If construction is a one-liner, Factory adds nothing.
+- **Will this code change?** If a module is stable and well-tested, wrapping it in abstractions "just in case" is pure cost.
+
+The five patterns above earn their place because they solve problems that genuinely recur in real systems. The remaining eighteen are not useless — but they are situational, and applying them without the right situation is how codebases become monuments to accidental complexity.
+
+Write the simple thing. Refactor when the code tells you to. Reach for a pattern only when you can name the specific problem it solves in your specific codebase.

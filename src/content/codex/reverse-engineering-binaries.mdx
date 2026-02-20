@@ -1,0 +1,185 @@
+---
+title: "Reverse Engineering Binaries: A First Look"
+domain: "hacker-mindset"
+difficulty: "advanced"
+publishedAt: "2026-02-18"
+summary: "An introduction to reverse engineering compiled binaries — reading assembly, using disassemblers, dynamic analysis with GDB, and walking through a simple crackme."
+---
+
+You write code in a high-level language. The compiler translates it to machine code. The CPU executes the machine code. Reverse engineering is the art of going backwards — starting with the binary and reconstructing the logic the programmer intended. It is not just for security researchers and malware analysts. Understanding what your code becomes after compilation makes you a sharper systems programmer, a better debugger, and a more security-conscious engineer.
+
+## The Compilation Pipeline in Reverse
+
+When you compile a C program, the toolchain performs several transformations: preprocessing, compilation to assembly, assembly to object code, and linking into a final executable. Reverse engineering walks this pipeline backwards.
+
+Starting from a stripped binary, you have raw machine code — a sequence of bytes that encode CPU instructions. A **disassembler** translates these bytes into human-readable assembly. A **decompiler** attempts to go further, producing pseudo-C that approximates the original source. Neither is perfect: variable names are gone, optimizations have restructured the logic, and high-level abstractions have been flattened into register operations.
+
+> Reverse engineering is not about recovering the original source code. It is about understanding the *behavior* of the program — what it does, how it decides, and where it is vulnerable.
+
+## Static Analysis Tools
+
+Static analysis examines the binary without executing it.
+
+**Ghidra** is the tool that changed the field. Released by the NSA in 2019, it is a free, open-source reverse engineering suite with a powerful decompiler, scripting support (Java and Python), and collaborative analysis features. Its decompiler output is remarkably readable for a free tool.
+
+**IDA Free** (and its commercial sibling IDA Pro) was the industry standard for decades. It pioneered interactive disassembly — letting analysts annotate, rename functions, and define data structures as they work. The free version supports x86 and x86-64.
+
+**objdump** is the quick-and-dirty option, available on any Linux system:
+
+```bash
+# Disassemble the .text section of a binary
+objdump -d -M intel ./target_binary
+
+# Show all sections and their sizes
+objdump -h ./target_binary
+
+# Display the string table
+objdump -s -j .rodata ./target_binary
+```
+
+The `-M intel` flag switches to Intel syntax (destination-first), which most reverse engineers prefer over AT&T syntax.
+
+## x86 Assembly Basics
+
+You do not need to memorize every x86 instruction to read disassembly. A handful of instructions cover the vast majority of compiled code:
+
+```nasm
+; Moving data
+mov  eax, 42          ; eax = 42
+mov  ebx, [eax]       ; ebx = value at memory address in eax
+lea  ecx, [eax+4]     ; ecx = eax + 4 (address calculation, no memory access)
+
+; Stack operations
+push eax              ; push eax onto stack, decrement stack pointer
+pop  ebx              ; pop top of stack into ebx
+
+; Arithmetic
+add  eax, ebx         ; eax = eax + ebx
+sub  eax, 1           ; eax = eax - 1
+imul eax, ebx         ; eax = eax * ebx
+
+; Comparison and branching
+cmp  eax, ebx         ; set flags based on eax - ebx
+je   label            ; jump if equal (zero flag set)
+jne  label            ; jump if not equal
+jg   label            ; jump if greater (signed)
+jmp  label            ; unconditional jump
+
+; Function calls
+call function_addr    ; push return address, jump to function
+ret                   ; pop return address, jump to it
+```
+
+**Registers** are the CPU's working variables. On x86-64, the general-purpose registers are `rax`, `rbx`, `rcx`, `rdx`, `rsi`, `rdi`, `rbp`, `rsp`, and `r8` through `r15`. The function calling convention (on Linux) passes the first six integer arguments in `rdi`, `rsi`, `rdx`, `rcx`, `r8`, `r9`, with the return value in `rax`.
+
+Understanding calling conventions is crucial — they tell you which registers hold function arguments and return values, allowing you to map disassembled `call` instructions back to meaningful function signatures.
+
+## Dynamic Analysis with GDB
+
+Static analysis tells you what the code *could* do. Dynamic analysis tells you what it *actually does* with real inputs. **GDB** (GNU Debugger) is the workhorse of dynamic analysis on Linux.
+
+```bash
+# Start the binary under GDB
+gdb ./target_binary
+
+# Set a breakpoint at main
+(gdb) break main
+(gdb) run
+
+# Step through one instruction at a time
+(gdb) stepi
+
+# Examine registers
+(gdb) info registers
+
+# Examine memory at an address (16 hex bytes)
+(gdb) x/16xb 0x7fffffffe000
+
+# Examine a string at an address
+(gdb) x/s 0x404020
+
+# Set a breakpoint at a specific address
+(gdb) break *0x401156
+
+# Continue execution until next breakpoint
+(gdb) continue
+
+# Print the value of a register
+(gdb) print $rax
+
+# Disassemble the current function
+(gdb) disassemble
+```
+
+The power of dynamic analysis is seeing actual values flow through the program. Instead of reasoning abstractly about what `cmp eax, [rbp-0x4]` does, you can inspect both operands at runtime and understand exactly what is being compared.
+
+## Walkthrough: A Simple Crackme
+
+A "crackme" is a small program designed to be reverse engineered — typically one that asks for a password or serial key. Let us walk through the approach for a basic one.
+
+Suppose we have a binary that prompts for a password and prints "Access granted" or "Access denied." The first step is reconnaissance:
+
+```bash
+# Check what kind of binary it is
+file crackme
+# crackme: ELF 64-bit LSB executable, x86-64, statically linked, not stripped
+
+# Look for interesting strings
+strings crackme | grep -i "access\|password\|correct\|wrong"
+# Enter password:
+# Access granted
+# Access denied
+# s3cr3t_p4ss
+```
+
+Sometimes it is that easy — the password is a plaintext string in the binary. But let us assume the password is not stored in plaintext and instead is checked through a comparison function.
+
+Load the binary in Ghidra, find the `main` function, and look for the branch that decides between "granted" and "denied." You will typically find a pattern like this in the decompiler output:
+
+```c
+// Ghidra decompiler output (approximate)
+void main(void) {
+    char input[32];
+    printf("Enter password: ");
+    scanf("%31s", input);
+
+    int result = check_password(input);
+    if (result == 0) {
+        puts("Access granted");
+    } else {
+        puts("Access denied");
+    }
+}
+```
+
+Now examine `check_password`. It might XOR each character with a key, compare against stored bytes, or compute a hash. With GDB, set a breakpoint at the comparison instruction and inspect both operands — the transformed input and the expected value.
+
+```bash
+(gdb) break *0x40115a    # address of the cmp instruction
+(gdb) run
+Enter password: AAAA
+(gdb) info registers
+# Look at what is being compared — your transformed input vs expected value
+```
+
+By observing the comparison values with known inputs, you can deduce the transformation and work backwards to find the correct password.
+
+## CTF Resources for Practice
+
+Capture The Flag competitions are the best way to develop reverse engineering skills in a structured, legal environment:
+
+- **picoCTF** — beginner-friendly CTF run by Carnegie Mellon. Excellent reverse engineering challenges with progressive difficulty.
+- **crackmes.one** — a repository of crackme challenges sorted by difficulty and platform.
+- **Microcorruption** — embedded security CTF that teaches assembly and debugging in a browser-based environment.
+- **pwnable.kr** and **pwnable.tw** — wargames focused on binary exploitation, building on reverse engineering fundamentals.
+- **Nightmare** — a free course that teaches reverse engineering and binary exploitation through CTF challenge walkthroughs.
+
+## Legal and Ethical Considerations
+
+Reverse engineering occupies a nuanced legal space. In many jurisdictions, reverse engineering for **interoperability** (making software work with other software) and **security research** (finding vulnerabilities) is protected. However:
+
+- **License agreements** may prohibit reverse engineering. The DMCA in the United States restricts circumventing copy protection, though security research exemptions exist.
+- **Always practice on software you have permission to analyze** — your own code, open-source projects, CTF challenges, or programs with explicit reverse engineering permission.
+- **Responsible disclosure** applies when you find real vulnerabilities. Report them to the vendor before publishing.
+
+Reverse engineering is a skill that sharpens your understanding of how software actually works beneath the abstractions. Every time you read disassembly, you are seeing the unvarnished truth of what the CPU executes — no frameworks, no abstractions, no syntactic sugar. Just instructions, registers, and memory. That perspective makes everything else you build a little more deliberate.

@@ -1,0 +1,144 @@
+---
+title: "Cryptography Primitives Explained for Engineers"
+domain: "cybersecurity"
+difficulty: "intermediate"
+publishedAt: "2026-02-10"
+summary: "A practical tour of the building blocks of modern cryptography — symmetric ciphers, hash functions, asymmetric encryption, and how they combine in TLS."
+---
+
+Most engineers interact with cryptography through high-level APIs: call `encrypt()`, get ciphertext. Call `hash()`, get a digest. But when something goes wrong — a padding oracle vulnerability, a timing attack, a botched key rotation — the abstraction breaks down and you need to understand what is actually happening underneath.
+
+This is not a mathematics course. It is a working engineer's map of the cryptographic primitives that secure every HTTPS connection, every password database, and every signed JWT in production today.
+
+## Symmetric Encryption: One Key, Two Operations
+
+Symmetric encryption uses the same key to encrypt and decrypt. It is fast — orders of magnitude faster than asymmetric encryption — and it is the workhorse of bulk data encryption.
+
+**AES (Advanced Encryption Standard)** is the symmetric cipher you will encounter most often. It operates on fixed-size 128-bit blocks and supports key sizes of 128, 192, or 256 bits. At a high level, AES transforms plaintext through multiple rounds of substitution, permutation, and mixing operations, each round keyed with a derived subkey. The math is elegant, but the practical concern is choosing the right **mode of operation**.
+
+### AES Modes: Choosing Correctly
+
+AES by itself encrypts one 128-bit block. Modes define how to encrypt data larger than one block.
+
+**ECB (Electronic Codebook)** encrypts each block independently with the same key. Identical plaintext blocks produce identical ciphertext blocks. This leaks patterns catastrophically — the famous "ECB penguin" image demonstrates that encrypting a bitmap in ECB mode preserves the visible outline. **Never use ECB.**
+
+**CBC (Cipher Block Chaining)** XORs each plaintext block with the previous ciphertext block before encryption, so identical plaintext blocks produce different ciphertext. It requires an initialization vector (IV) and is sequential — you cannot encrypt blocks in parallel. CBC is secure when used correctly, but it is vulnerable to padding oracle attacks if error messages reveal whether padding was valid.
+
+**GCM (Galois/Counter Mode)** is the modern standard. It provides both confidentiality *and* authentication (it is an AEAD cipher — Authenticated Encryption with Associated Data). GCM runs in counter mode (parallelizable, no padding needed) and produces an authentication tag that detects any tampering with the ciphertext.
+
+```python
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+key = AESGCM.generate_key(bit_length=256)
+cipher = AESGCM(key)
+nonce = os.urandom(12)  # 96-bit nonce, MUST be unique per encryption
+
+# Encrypt — returns ciphertext + authentication tag
+ciphertext = cipher.encrypt(nonce, plaintext, associated_data=None)
+
+# Decrypt — raises InvalidTag if tampered
+plaintext = cipher.decrypt(nonce, ciphertext, associated_data=None)
+```
+
+> If you are choosing an AES mode today, the answer is GCM (or ChaCha20-Poly1305 for environments without AES hardware acceleration). If you are using CBC, you should have a specific reason.
+
+## Hash Functions: One-Way Fingerprints
+
+A cryptographic hash function takes arbitrary input and produces a fixed-size digest with three critical properties:
+
+- **Preimage resistance** — Given a hash output, you cannot find an input that produces it.
+- **Second preimage resistance** — Given an input, you cannot find a different input with the same hash.
+- **Collision resistance** — You cannot find any two distinct inputs that hash to the same output.
+
+**SHA-256** (part of the SHA-2 family) produces a 256-bit digest and is the most widely used hash function in production systems — Git commit hashes, Bitcoin mining, certificate fingerprints, and integrity verification all rely on it.
+
+```bash
+echo -n "hello" | sha256sum
+# 2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824
+```
+
+Change a single bit of input and the output changes completely (the avalanche effect). There is no way to work backward from the digest to the input. These properties make hash functions the foundation for password storage, digital signatures, and data integrity verification.
+
+## HMACs: Authenticated Hashing
+
+A raw hash does not prove who created it. If you hash a message and send the hash alongside it, an attacker can modify the message and recompute the hash. You need a **keyed** hash.
+
+**HMAC (Hash-based Message Authentication Code)** combines a hash function with a secret key to produce a tag that only someone with the key can generate or verify:
+
+```python
+import hmac
+import hashlib
+
+key = b"shared-secret-key"
+message = b"transfer $500 to account 12345"
+
+tag = hmac.new(key, message, hashlib.sha256).hexdigest()
+# Send (message, tag) — recipient recomputes HMAC with same key to verify
+```
+
+HMACs are used in API authentication (AWS Signature V4), JWT integrity, and anywhere you need to prove a message was not tampered with and came from someone who holds the key.
+
+## Asymmetric Encryption: The Key Exchange Problem
+
+Symmetric encryption has a fundamental bootstrapping problem: how do two parties agree on a shared key without an eavesdropper intercepting it? Asymmetric (public-key) cryptography solves this.
+
+**RSA** generates a mathematically linked key pair — a public key (shared openly) and a private key (kept secret). Data encrypted with the public key can only be decrypted with the private key, and vice versa. RSA's security rests on the difficulty of factoring the product of two large primes.
+
+**Diffie-Hellman (DH)** key exchange allows two parties to derive a shared secret over an insecure channel without ever transmitting the secret itself. Each party generates a private value, computes a public value, and exchanges public values. The mathematical structure (discrete logarithm problem) ensures that an eavesdropper who sees both public values cannot compute the shared secret. Modern TLS uses **Elliptic Curve Diffie-Hellman (ECDHE)** for forward secrecy — a new key pair per session, so compromising a long-term key does not decrypt past traffic.
+
+## Digital Signatures
+
+Digital signatures combine hashing and asymmetric encryption to prove authorship and integrity:
+
+1. Hash the message to produce a fixed-size digest
+2. Encrypt the digest with the signer's **private** key
+3. Anyone can decrypt the signature with the signer's **public** key and compare the digest
+
+```python
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives import hashes
+
+private_key = ec.generate_private_key(ec.SECP256R1())
+public_key = private_key.public_key()
+
+# Sign
+signature = private_key.sign(message, ec.ECDSA(hashes.SHA256()))
+
+# Verify — raises InvalidSignature if tampered
+public_key.verify(signature, message, ec.ECDSA(hashes.SHA256()))
+```
+
+This is how HTTPS certificates, code signing, Git commit signing, and JWTs (RS256/ES256) work. The signature proves that the holder of the private key produced the message, and that the message has not been modified since signing.
+
+## Password Hashing: A Special Case
+
+Storing passwords requires a *different kind* of hash function — one that is deliberately slow. General-purpose hashes like SHA-256 are designed to be fast. An attacker with a GPU can compute billions of SHA-256 hashes per second, making brute-force attacks trivial.
+
+**bcrypt** incorporates a configurable work factor (cost parameter) that controls how many iterations of its internal function run. Doubling the cost doubles the computation time.
+
+**Argon2** (winner of the Password Hashing Competition) is the modern recommendation. It is configurable in three dimensions: time (iterations), memory (forces the attacker to use large amounts of RAM), and parallelism.
+
+```python
+from argon2 import PasswordHasher
+
+ph = PasswordHasher(time_cost=3, memory_cost=65536, parallelism=4)
+hashed = ph.hash("user-password")
+
+# Verify — timing-safe comparison, returns True or raises exception
+ph.verify(hashed, "user-password")
+```
+
+> Never roll your own password hashing. Never use SHA-256 or MD5 for passwords. Never store passwords in plaintext. Use bcrypt or Argon2 with the highest cost your server can tolerate within your latency budget.
+
+## The TLS Handshake: Everything Combined
+
+TLS ties every primitive together into a single protocol that secures the web. A simplified TLS 1.3 handshake:
+
+1. **ClientHello** — The client sends supported cipher suites and an ephemeral ECDHE public key share.
+2. **ServerHello** — The server selects a cipher suite, sends its ECDHE public key share, and its certificate (containing the server's long-term public key, signed by a Certificate Authority).
+3. **Key derivation** — Both sides compute the shared secret via ECDHE, then derive symmetric session keys using HKDF (a key derivation function based on HMAC).
+4. **Encrypted communication** — All subsequent data is encrypted with AES-GCM (or ChaCha20-Poly1305) using the derived session keys.
+
+In this single handshake, you see asymmetric encryption (ECDHE key exchange), digital signatures (certificate verification), hash functions (key derivation via HKDF), and symmetric encryption (AES-GCM for bulk data). Every primitive has its role. None works alone.
+
+That is the central insight of applied cryptography: these are not isolated algorithms to be studied in textbooks. They are components of a system, and understanding how they compose is what separates engineers who use crypto APIs correctly from those who introduce vulnerabilities without realizing it.

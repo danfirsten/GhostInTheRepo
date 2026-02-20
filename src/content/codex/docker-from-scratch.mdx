@@ -1,0 +1,178 @@
+---
+title: "Docker From Scratch: Namespaces, Cgroups, and Layers"
+domain: "cloud-devops"
+difficulty: "advanced"
+publishedAt: "2026-02-05"
+summary: "What containers actually are under the hood — the Linux primitives that make isolation possible and the layer system that makes images efficient."
+---
+
+Containers are not lightweight virtual machines. This is the most common misconception in modern infrastructure, and it leads to incorrect mental models about security, performance, and failure modes. A virtual machine emulates hardware and runs a full guest kernel. A container is a regular Linux process — running on the host kernel — that has been isolated using kernel primitives that already existed long before Docker.
+
+Understanding those primitives is the difference between using containers as a black box and understanding why they behave the way they do.
+
+## Linux Namespaces: The Isolation Mechanism
+
+Namespaces are the kernel feature that gives a process its own isolated view of system resources. Each namespace type isolates a different resource:
+
+**PID namespace** — The process sees its own PID tree. PID 1 inside the container is not PID 1 on the host. The container's processes cannot see or signal processes outside their namespace.
+
+**NET namespace** — The process gets its own network stack: interfaces, routing tables, iptables rules, ports. This is why two containers can both bind to port 80 without conflict.
+
+**MNT namespace** — The process has its own filesystem mount tree. The container sees `/` as its root, but this root is actually a subdirectory on the host.
+
+**UTS namespace** — The process has its own hostname and domain name. This is why `hostname` inside a container returns the container ID.
+
+**IPC namespace** — Isolates inter-process communication resources (shared memory, semaphores, message queues).
+
+**USER namespace** — Maps UIDs inside the container to different UIDs on the host. Root (UID 0) inside the container can be an unprivileged user on the host.
+
+You can create namespaces yourself without Docker:
+
+```bash
+# Create a new PID and mount namespace, start a shell inside it
+sudo unshare --pid --mount --fork /bin/bash
+
+# Inside this shell, you are PID 1
+echo $$
+# Output: 1
+```
+
+The `unshare` system call is what Docker (via containerd and runc) uses under the hood. Every `docker run` ultimately translates to kernel namespace operations.
+
+## Cgroups: Resource Limits
+
+Namespaces control what a process can *see*. Cgroups (control groups) control what a process can *use*. They are the kernel mechanism for limiting, prioritizing, and accounting resource consumption.
+
+Key cgroup controllers:
+
+- **memory** — Set hard memory limits. When exceeded, the kernel's OOM killer terminates the process (this is why containers get "killed" instead of swapping indefinitely).
+- **cpu** — Limit CPU time via shares, quotas, or pinning to specific cores.
+- **blkio** — Throttle disk I/O bandwidth.
+- **pids** — Limit the number of processes (prevents fork bombs).
+
+```bash
+# Docker translates these flags into cgroup configurations
+docker run --memory=512m --cpus=1.5 --pids-limit=100 myapp
+
+# Under the hood, this creates entries in /sys/fs/cgroup/
+# For cgroups v2:
+cat /sys/fs/cgroup/system.slice/docker-<id>.scope/memory.max
+# Output: 536870912  (512MB in bytes)
+```
+
+The combination of namespaces and cgroups is the container. Namespaces isolate visibility, cgroups limit consumption. Everything else — images, layers, registries, orchestration — is tooling built on top of these two primitives.
+
+> If you want to understand why a container was killed, check dmesg for OOM messages. The kernel does not know or care that it is killing a "container" — it is enforcing a cgroup memory limit on a process group.
+
+## Union Filesystems and Image Layers
+
+A container image is not a single filesystem snapshot. It is a stack of read-only layers, assembled at runtime using a union filesystem (overlay2 on modern Linux).
+
+Each layer represents a set of filesystem changes — files added, modified, or deleted. When you pull `node:20-slim`, you are downloading multiple layers:
+
+```
+Layer 1: base Debian filesystem       (~30MB)
+Layer 2: apt packages, system libs    (~15MB)
+Layer 3: Node.js binary + npm         (~50MB)
+Layer 4: configuration files          (~1MB)
+```
+
+The union filesystem presents these layers as a single coherent filesystem. When a file exists in multiple layers, the uppermost layer wins. When a file is deleted, a *whiteout* marker in a higher layer hides it.
+
+When a container starts, a thin writable layer is added on top. All writes go to this layer. The image layers below remain immutable and shared across all containers using the same image.
+
+This design has profound implications:
+
+- **Pulling is efficient.** If you already have layers 1-3 from a previous pull, only layer 4 needs to download.
+- **Disk usage is efficient.** Twenty containers from the same image share the read-only layers and only consume disk for their individual writable layers.
+- **Builds are cacheable.** Each instruction in a Dockerfile creates a layer, and unchanged layers are reused from cache.
+
+## Why Layer Ordering Matters
+
+The Docker build cache invalidates a layer and everything below it when the layer's input changes. This makes instruction ordering critical:
+
+```dockerfile
+# BAD: Copying all source first busts the cache on every code change
+COPY . /app
+RUN npm install
+RUN npm run build
+
+# GOOD: Install dependencies first — this layer is cached until package.json changes
+COPY package.json package-lock.json /app/
+RUN npm install
+COPY . /app
+RUN npm run build
+```
+
+In the optimized version, `npm install` only reruns when dependencies change. Source code changes only invalidate the `COPY . /app` layer and below. On a project with heavy dependencies, this can save minutes per build.
+
+**The rule:** order instructions from least-frequently-changed to most-frequently-changed.
+
+## Multi-Stage Builds
+
+A production image should contain only what is needed to run the application — not compilers, build tools, or development dependencies. Multi-stage builds solve this:
+
+```dockerfile
+# Stage 1: Build
+FROM node:20 AS builder
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+# Stage 2: Production
+FROM node:20-slim
+WORKDIR /app
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+EXPOSE 3000
+CMD ["node", "dist/server.js"]
+```
+
+The builder stage has all the tools needed to compile. The final image only has the runtime and the compiled output. The builder stage and all its layers are discarded — they never appear in the final image.
+
+A Go application takes this to the extreme with `FROM scratch` — an empty base image containing nothing but your statically linked binary:
+
+```dockerfile
+FROM golang:1.22 AS builder
+WORKDIR /app
+COPY . .
+RUN CGO_ENABLED=0 go build -o server .
+
+FROM scratch
+COPY --from=builder /app/server /server
+CMD ["/server"]
+```
+
+Final image size: the size of your binary. No shell, no package manager, no attack surface.
+
+## The OCI Specification
+
+Docker popularized containers, but the industry standardized them through the **Open Container Initiative (OCI)**. The OCI defines three specifications:
+
+- **Image spec** — How to serialize image layers and metadata into a distributable format.
+- **Runtime spec** — How a container runtime (like runc) creates and manages containers from a root filesystem and configuration.
+- **Distribution spec** — How images are pushed to and pulled from registries.
+
+This standardization means images built by Docker work with Podman, containerd, CRI-O, and any OCI-compliant runtime. The tooling is interchangeable because the format is agreed upon.
+
+## Rootless Containers and Security
+
+By default, Docker runs containers as root on the host — the Docker daemon itself requires root privileges. This is a significant attack surface: a container escape gives the attacker root on the host.
+
+**Rootless containers** run the entire container runtime as an unprivileged user, using USER namespaces to map root inside the container to an unprivileged UID on the host:
+
+```bash
+# Podman runs rootless by default
+podman run --rm -it alpine whoami
+# Output: root (but this is UID 100000 on the host, not UID 0)
+```
+
+Additional security layers to understand:
+
+- **seccomp profiles** filter which system calls the container can make (default Docker profile blocks ~44 syscalls)
+- **AppArmor/SELinux** confine file access and capabilities
+- **Capabilities** are dropped by default — containers do not get `CAP_SYS_ADMIN`, `CAP_NET_RAW`, etc., unless explicitly granted
+
+Containers are not a security boundary in the way VMs are. They share a kernel with the host. But with rootless execution, dropped capabilities, and seccomp profiles, the attack surface shrinks considerably. Understanding these layers — and knowing which ones your deployment actually enables — is the difference between running containers in production responsibly and running them on faith.

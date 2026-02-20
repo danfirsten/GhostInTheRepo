@@ -1,0 +1,158 @@
+---
+title: "The Web Performance Budget: What to Measure and Why"
+domain: "web-development"
+difficulty: "intermediate"
+publishedAt: "2026-01-25"
+summary: "How to define, measure, and enforce a performance budget that keeps your web application fast as it grows."
+---
+
+Your users have already decided how fast your site should be. If it takes more than three seconds to load, roughly half of them leave. A performance budget is the engineering discipline that prevents your team from shipping a site that crosses that line — and it starts with knowing exactly what to measure.
+
+## What a Performance Budget Actually Is
+
+A performance budget is a set of hard limits on metrics that affect user experience. Think of it the way a financial budget works: you have a fixed amount to spend, and every feature, library, and image is a withdrawal. When you exceed the budget, something has to go.
+
+The budget is not aspirational. It is a constraint enforced in CI. If a pull request pushes the JavaScript bundle past 200KB gzipped, the build fails. If Largest Contentful Paint regresses past 2.5 seconds, the deployment is blocked. This is the only way performance survives contact with a growing team and an expanding feature set.
+
+## Core Web Vitals: The Metrics That Matter
+
+Google's Core Web Vitals have become the industry standard for measuring user-perceived performance. They focus on three dimensions:
+
+**Largest Contentful Paint (LCP)** measures loading performance — specifically, how long it takes for the largest visible element (hero image, heading block, video poster) to render. Target: under 2.5 seconds.
+
+**Interaction to Next Paint (INP)** replaced First Input Delay in 2024. It measures responsiveness across the *entire* page lifecycle, not just the first interaction. Every click, tap, and keypress is observed; INP reports the worst interaction (at the 98th percentile). Target: under 200 milliseconds.
+
+**Cumulative Layout Shift (CLS)** measures visual stability. Every time a visible element shifts position unexpectedly — an ad loading above content, a font swap pushing text down — the CLS score increases. Target: under 0.1.
+
+> These three metrics correspond to loading, interactivity, and stability. If you only measure three things, measure these.
+
+## The Critical Rendering Path
+
+Before a single pixel appears on screen, the browser must complete a sequence of steps, and understanding this sequence is essential for budgeting performance.
+
+1. **HTML parsing** begins immediately as bytes arrive. The parser builds the DOM tree incrementally.
+2. **CSS blocks rendering.** The browser will not paint anything until all render-blocking CSS is downloaded and parsed into the CSSOM. This is why critical CSS should be inlined and non-critical CSS deferred.
+3. **JavaScript blocks the parser** (unless marked `async` or `defer`). A synchronous `<script>` tag halts DOM construction until the script is downloaded, parsed, and executed.
+
+```html
+<!-- This blocks rendering — avoid for non-critical styles -->
+<link rel="stylesheet" href="/styles/analytics-dashboard.css" />
+
+<!-- This blocks the parser — never do this for third-party scripts -->
+<script src="https://cdn.example.com/heavy-library.js"></script>
+
+<!-- Better: defer non-critical JS -->
+<script defer src="/scripts/analytics.js"></script>
+```
+
+Every render-blocking resource is a withdrawal from your performance budget. The fewer resources that stand between the first byte and the first paint, the faster your LCP.
+
+## Bundle Size Budgets
+
+JavaScript is the most expensive resource on the web, byte for byte. Unlike an image (which can be decoded progressively and displayed in a streaming fashion), JavaScript must be downloaded, parsed, compiled, and executed — all of which block the main thread.
+
+A practical starting point:
+
+- **Total JS budget (compressed):** 150–200KB gzipped
+- **Per-route budget:** 50–70KB gzipped for initial route-specific code
+- **CSS budget:** 50KB gzipped total
+- **Image budget per page:** 500KB total (after compression)
+
+Track these with tools like `bundleanalyzer` or `source-map-explorer`:
+
+```bash
+# Analyze your Next.js bundle
+npx @next/bundle-analyzer
+
+# Or use source-map-explorer for any webpack/vite project
+npx source-map-explorer dist/assets/*.js
+```
+
+## Image Optimization
+
+Images typically account for the majority of page weight. The budget-conscious approach:
+
+- **Use modern formats.** AVIF is 50% smaller than JPEG at equivalent quality. WebP is 25-30% smaller. Serve AVIF with WebP and JPEG fallbacks.
+- **Responsive images.** Never serve a 2000px image to a 400px viewport. Use `srcset` and `sizes` to let the browser choose.
+- **Lazy load below-the-fold images.** The `loading="lazy"` attribute is now supported everywhere that matters.
+- **Set explicit dimensions.** Always specify `width` and `height` attributes (or use CSS aspect-ratio) to reserve space and prevent CLS.
+
+```html
+<img
+  src="/images/hero.avif"
+  srcset="/images/hero-400.avif 400w,
+          /images/hero-800.avif 800w,
+          /images/hero-1200.avif 1200w"
+  sizes="(max-width: 768px) 100vw, 50vw"
+  width="1200"
+  height="630"
+  alt="Dashboard overview"
+  loading="lazy"
+  decoding="async"
+/>
+```
+
+## Code Splitting and Lazy Loading
+
+A monolithic bundle forces every user to download code for every page, even pages they will never visit. Code splitting breaks the bundle into chunks loaded on demand.
+
+In modern frameworks, route-based splitting is often automatic. But component-level splitting is equally important:
+
+```tsx
+import { lazy, Suspense } from "react";
+
+// This component is split into its own chunk
+const AnalyticsDashboard = lazy(() => import("./AnalyticsDashboard"));
+
+function App() {
+  return (
+    <Suspense fallback={<DashboardSkeleton />}>
+      <AnalyticsDashboard />
+    </Suspense>
+  );
+}
+```
+
+The key principle: **only load code that the current viewport needs.** A modal that 5% of users open should not be in the initial bundle. A charting library used on one page should not be shipped to every page.
+
+## Measuring: Lab vs. Field Data
+
+There are two categories of performance measurement, and you need both.
+
+**Lab data** comes from tools running in controlled environments: Lighthouse, WebPageTest, Chrome DevTools. Lab data is reproducible, debuggable, and available before you ship. It catches regressions in CI.
+
+**Field data** comes from real users in production: the Chrome User Experience Report (CrUX), or your own Real User Monitoring (RUM) instrumentation via the `web-vitals` library. Field data captures the messy reality of slow networks, old devices, and browser extensions.
+
+```javascript
+import { onLCP, onINP, onCLS } from "web-vitals";
+
+onLCP(({ value }) => sendToAnalytics("LCP", value));
+onINP(({ value }) => sendToAnalytics("INP", value));
+onCLS(({ value }) => sendToAnalytics("CLS", value));
+```
+
+> Lab data tells you if you *can* be fast. Field data tells you if you *are* fast.
+
+## Enforcing Budgets in CI
+
+A budget without enforcement is a suggestion. Wire it into your build pipeline:
+
+```json
+// lighthouserc.json
+{
+  "ci": {
+    "assert": {
+      "assertions": {
+        "categories:performance": ["error", { "minScore": 0.9 }],
+        "largest-contentful-paint": ["error", { "maxNumericValue": 2500 }],
+        "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1 }],
+        "total-byte-weight": ["error", { "maxNumericValue": 300000 }]
+      }
+    }
+  }
+}
+```
+
+Run `lhci autorun` in your CI pipeline. If any assertion fails, the build fails. This is the moment the performance budget becomes real — when it has the power to block a merge.
+
+Performance is not a feature you ship once. It is a property you defend continuously. A well-defined budget, automated measurement, and CI enforcement create the guardrails that keep your application fast as the team and codebase grow. Without them, entropy wins.

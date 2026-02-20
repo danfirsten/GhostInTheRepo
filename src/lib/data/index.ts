@@ -4,7 +4,13 @@
  */
 
 export { getAllDomains, getDomain, getAllDomainSlugs } from "./domains";
-export { getTopicsForDomain, getAllTopics, getMarkdownContent } from "./parser";
+export {
+  getTopicsForDomain,
+  getAllTopics,
+  getMarkdownContent,
+  getTopicWithContent,
+  getAllTopicParams,
+} from "./parser";
 export { getCheatsheet, getAllCheatsheets } from "./cheatsheets";
 export { getAllLearningPaths, getLearningPath } from "./paths";
 export { getAllCodexArticles, getCodexArticle, getAllCodexSlugs } from "./codex";

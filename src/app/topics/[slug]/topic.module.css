@@ -137,6 +137,59 @@
   flex: 1;
 }
 
+/* ---- Clickable Topic Links ---- */
+.topicLink {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: var(--spectral-1);
+  transition: background 150ms ease;
+}
+
+.topicLink:hover {
+  background: rgba(125, 211, 252, 0.06);
+}
+
+.topicLink .subtopicTitle {
+  color: var(--text-primary);
+  transition: color 150ms ease;
+}
+
+.topicLink:hover .subtopicTitle {
+  color: var(--ghost-white);
+}
+
+.topicArrow {
+  color: var(--text-tertiary);
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.topicLink:hover .topicArrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.subLink {
+  display: block;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.subLink:hover {
+  color: var(--spectral-2);
+  background: rgba(125, 211, 252, 0.04);
+}
+
 /* ---- TOC Column ---- */
 .toc {
   width: 240px;

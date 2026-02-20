@@ -1,0 +1,123 @@
+---
+title: "Git Internals: Objects, Refs, and Plumbing"
+domain: "terminal-and-tools"
+difficulty: "intermediate"
+publishedAt: "2026-01-10"
+summary: "How Git's content-addressable object store works under the hood — blobs, trees, commits, refs, and the plumbing commands that expose the machinery."
+---
+
+Most developers interact with Git through a handful of porcelain commands: `add`, `commit`, `push`, `merge`. These are comfortable abstractions, but they hide a remarkably elegant data model. Understanding what lives inside the `.git` directory transforms Git from a tool you use into a system you *understand* — and the difference shows up the moment something goes wrong.
+
+## The Object Store
+
+Git is, at its core, a **content-addressable filesystem**. Every piece of data it stores — file contents, directory structures, commit metadata — is hashed with SHA-1 and stored as an **object** in `.git/objects/`. There are four types.
+
+**Blobs** store file contents. No filename, no permissions — just raw bytes. Two files with identical contents produce the same blob hash, regardless of where they live in the tree.
+
+**Trees** store directory listings. Each entry maps a name and mode (file permissions) to either a blob hash (for files) or another tree hash (for subdirectories). A tree is a snapshot of a directory at a point in time.
+
+**Commits** tie everything together. A commit object contains: the hash of a root tree, zero or more parent commit hashes, author and committer metadata, and a message.
+
+**Tags** (annotated) point to a specific object — usually a commit — with a name, tagger, date, and message.
+
+You can inspect any of these with Git's plumbing commands:
+
+```bash
+# Create a blob manually
+echo "hello world" | git hash-object -w --stdin
+# Returns: 95d09f2b10159347eece71399a7e2e907ea3df4f
+
+# Read it back
+git cat-file -p 95d09f2b10159347eece71399a7e2e907ea3df4f
+# Output: hello world
+
+# Check its type
+git cat-file -t 95d09f2b10159347eece71399a7e2e907ea3df4f
+# Output: blob
+```
+
+## The Directed Acyclic Graph
+
+These objects form a **DAG** — a directed acyclic graph. Each commit points to its parent(s), creating a chain of history. Merges create commits with two parents. The entire history of a repository is encoded in this graph, and because every node is content-addressed, the graph is **immutable and tamper-evident**. Change a single byte in a file, and the blob hash changes — which changes the tree hash, which changes the commit hash, which changes every descendant commit's hash.
+
+```
+commit c3 ──→ commit c2 ──→ commit c1
+  │              │              │
+  ▼              ▼              ▼
+tree t3        tree t2        tree t1
+  │              │              │
+  ├─▶ blob a3    ├─▶ blob a2    ├─▶ blob a1
+  └─▶ blob b1    └─▶ blob b1    └─▶ blob b1
+```
+
+Notice that `blob b1` appears in all three trees. Git stores it **once** — three trees simply reference the same hash. This is how Git handles storage efficiently even across thousands of commits.
+
+## Refs: Human-Readable Pointers
+
+A SHA-1 hash like `a1b2c3d4e5f6...` is not something humans want to type. **Refs** solve this by mapping names to hashes. They are plain text files living in `.git/refs/`.
+
+```bash
+# What does 'main' point to?
+cat .git/refs/heads/main
+# Output: c3a4b5c6d7e8f9... (a commit hash)
+```
+
+- **Branches** are refs in `.git/refs/heads/`. A branch is nothing more than a file containing a commit hash. When you make a new commit on a branch, Git updates that file.
+- **HEAD** is a special ref (`.git/HEAD`) that usually contains a symbolic reference: `ref: refs/heads/main`. This tells Git which branch you are "on."
+- **Tags** are refs in `.git/refs/tags/`. Lightweight tags are direct pointers to commits. Annotated tags point to tag objects.
+
+```bash
+# Move a branch pointer manually
+git update-ref refs/heads/my-branch abc1234
+
+# See where HEAD points
+git symbolic-ref HEAD
+# Output: refs/heads/main
+```
+
+> Branches are cheap in Git because creating one is literally writing 41 bytes (a hex SHA plus a newline) to a file. There is no copying of code, no forking of directories. Just a pointer.
+
+## What Happens When You Commit
+
+Walking through `git commit` in terms of plumbing commands reveals the full machinery:
+
+1. **Staging** (`git add`): Git hashes each staged file's contents into a blob (`hash-object -w`) and records the filename-to-hash mapping in the **index** (`.git/index`) — a binary file that represents the next tree to be committed.
+
+2. **Writing the tree**: `git write-tree` reads the index and creates tree objects for every directory, returning the root tree hash.
+
+3. **Creating the commit**: `git commit-tree` takes the root tree hash, parent commit hash(es), and your message, then writes a commit object.
+
+4. **Updating the ref**: Git updates `.git/refs/heads/<branch>` to point to the new commit hash.
+
+```bash
+# The plumbing equivalent of 'git commit -m "update"'
+TREE=$(git write-tree)
+COMMIT=$(echo "update" | git commit-tree $TREE -p HEAD)
+git update-ref refs/heads/main $COMMIT
+```
+
+This is all `git commit` does. Every other feature — branches, merges, rebases, cherry-picks — is built on top of these same primitives.
+
+## Packfiles and Garbage Collection
+
+Storing every version of every file as a separate object would be wasteful. Git periodically **packs** objects into `.git/objects/pack/` files, which use delta compression — storing only the differences between similar objects. Running `git gc` triggers this packing, along with cleaning up unreachable objects (commits that no ref points to).
+
+```bash
+# See how many loose vs packed objects you have
+git count-objects -v
+
+# Force a garbage collection
+git gc --aggressive
+```
+
+Objects are considered "unreachable" if no ref, tag, or reflog entry can reach them through the DAG. Git keeps a **reflog** (`.git/logs/`) that records every ref update for the last 90 days by default, which is why `git reflog` can rescue you from almost any mistake — the "lost" commits are still in the object store, just unreferenced.
+
+## Why This Matters
+
+When you understand the object model, Git's quirks become logical:
+
+- **Renaming a file** does not create a new object type — Git detects renames after the fact by comparing blob hashes between trees.
+- **Rebasing** creates *new* commit objects with new hashes, even if the diffs are identical, because the parent pointers are different.
+- **A detached HEAD** means HEAD points directly to a commit hash instead of a symbolic branch ref. Commits made here become unreachable once you switch branches — unless you create a branch to save them.
+
+The porcelain commands are convenient. But when a merge goes sideways, when you need to recover lost work, or when you are debugging a CI pipeline that behaves differently from your local checkout, the plumbing is where the answers live.

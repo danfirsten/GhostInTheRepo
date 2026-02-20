@@ -108,3 +108,34 @@ export function getMarkdownContent(contentPath: string): string {
   if (!fs.existsSync(filePath)) return "";
   return fs.readFileSync(filePath, "utf-8");
 }
+
+/**
+ * Get a single topic with its raw markdown content, for the detail page.
+ */
+export function getTopicWithContent(
+  domainSlug: string,
+  topicSlug: string,
+): { topic: Topic; content: string } | null {
+  const topics = getTopicsForDomain(domainSlug);
+  const topic = topics.find((t) => t.slug === topicSlug);
+  if (!topic) return null;
+
+  const dirName = Object.entries(dirToSlug).find(
+    ([, slug]) => slug === domainSlug,
+  )?.[0];
+  if (!dirName) return null;
+
+  const contentPath = `docs/research/${dirName}/${topicSlug}.md`;
+  const content = getMarkdownContent(contentPath);
+  return { topic, content };
+}
+
+/**
+ * Get all { slug, topic } pairs for generateStaticParams on topic content pages.
+ */
+export function getAllTopicParams(): { slug: string; topic: string }[] {
+  return Object.values(dirToSlug).flatMap((domainSlug) => {
+    const topics = getTopicsForDomain(domainSlug);
+    return topics.map((t) => ({ slug: domainSlug, topic: t.slug }));
+  });
+}
