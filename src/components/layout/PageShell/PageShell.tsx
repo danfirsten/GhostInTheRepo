@@ -5,9 +5,15 @@ import { Navbar } from "../Navbar/Navbar";
 import { Footer } from "../Footer/Footer";
 import { SearchOverlay } from "../Search/Search";
 import { HeroPageProvider } from "@/lib/hooks/useHeroPage";
+import type { SearchItem } from "@/lib/data/search";
 import styles from "./PageShell.module.css";
 
-export function PageShell({ children }: { children: React.ReactNode }) {
+interface PageShellProps {
+  children: React.ReactNode;
+  searchItems?: SearchItem[];
+}
+
+export function PageShell({ children, searchItems }: PageShellProps) {
   const [searchOpen, setSearchOpen] = useState(false);
 
   const openSearch = useCallback(() => setSearchOpen(true), []);
@@ -31,7 +37,11 @@ export function PageShell({ children }: { children: React.ReactNode }) {
         <Navbar onSearchOpen={openSearch} />
         <main className={styles.main}>{children}</main>
         <Footer />
-        <SearchOverlay open={searchOpen} onClose={closeSearch} />
+        <SearchOverlay
+          open={searchOpen}
+          onClose={closeSearch}
+          searchItems={searchItems}
+        />
       </div>
     </HeroPageProvider>
   );

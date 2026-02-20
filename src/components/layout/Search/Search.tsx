@@ -1,18 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { MagnifyingGlass, ArrowRight } from "@phosphor-icons/react";
+import { initSearchIndex, search as fuseSearch } from "@/lib/data/search-client";
+import type { SearchItem } from "@/lib/data/search";
 import styles from "./Search.module.css";
-
-interface SearchResult {
-  title: string;
-  path: string;
-  href: string;
-}
 
 interface SearchOverlayProps {
   open: boolean;
   onClose: () => void;
+  searchItems?: SearchItem[];
 }
 
 const RECENT_KEY = "ghost-recent-searches";
@@ -35,21 +32,31 @@ function saveRecentSearch(query: string) {
   localStorage.setItem(RECENT_KEY, JSON.stringify(recent.slice(0, MAX_RECENT)));
 }
 
-export function SearchOverlay({ open, onClose }: SearchOverlayProps) {
+export function SearchOverlay({ open, onClose, searchItems }: SearchOverlayProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(-1);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [initialized, setInitialized] = useState(false);
 
-  // Fuse.js will be wired in Phase 5 — for now, return empty results
-  const results: SearchResult[] = [];
+  // Initialize Fuse.js index when search items are provided
+  useEffect(() => {
+    if (searchItems && searchItems.length > 0 && !initialized) {
+      initSearchIndex(searchItems);
+      setInitialized(true);
+    }
+  }, [searchItems, initialized]);
+
+  const results = useMemo(() => {
+    if (!query.trim() || !initialized) return [];
+    return fuseSearch(query);
+  }, [query, initialized]);
 
   useEffect(() => {
     if (open) {
       setQuery("");
       setActiveIndex(-1);
       setRecentSearches(getRecentSearches());
-      // Focus input after animation
       requestAnimationFrame(() => inputRef.current?.focus());
     }
   }, [open]);
@@ -115,9 +122,7 @@ export function SearchOverlay({ open, onClose }: SearchOverlayProps) {
                 <div
                   key={s}
                   className={styles.resultItem}
-                  onClick={() => {
-                    setQuery(s);
-                  }}
+                  onClick={() => setQuery(s)}
                 >
                   <span className={styles.resultTitle}>{s}</span>
                 </div>
@@ -127,7 +132,7 @@ export function SearchOverlay({ open, onClose }: SearchOverlayProps) {
 
           {query.trim() !== "" && results.length === 0 && (
             <div className={styles.empty}>
-              No results yet — search index will be populated in a future phase.
+              No results found. Try a different search term.
             </div>
           )}
 

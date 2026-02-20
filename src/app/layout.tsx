@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Fraunces, Syne, Epilogue, JetBrains_Mono } from "next/font/google";
 import { PageShell } from "@/components/layout/PageShell";
+import { getAllDomains, getTopicsForDomain } from "@/lib/data";
+import { buildSearchItems } from "@/lib/data/search";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -46,19 +48,39 @@ export const metadata: Metadata = {
   ],
 };
 
+function getSearchData() {
+  const domains = getAllDomains();
+  const topicsByDomain: Record<
+    string,
+    { slug: string; title: string; subtopics: { slug: string; title: string }[] }[]
+  > = {};
+
+  for (const domain of domains) {
+    topicsByDomain[domain.slug] = getTopicsForDomain(domain.slug).map((t) => ({
+      slug: t.slug,
+      title: t.title,
+      subtopics: t.subtopics.map((s) => ({ slug: s.slug, title: s.title })),
+    }));
+  }
+
+  return buildSearchItems(domains, topicsByDomain);
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const searchItems = getSearchData();
+
   return (
     <html
       lang="en"
       className={`${fraunces.variable} ${syne.variable} ${epilogue.variable} ${jetbrainsMono.variable}`}
     >
       <body>
-          <PageShell>{children}</PageShell>
-        </body>
+        <PageShell searchItems={searchItems}>{children}</PageShell>
+      </body>
     </html>
   );
 }
