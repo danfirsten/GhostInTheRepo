@@ -1,0 +1,115 @@
+/* ---- Domain Grid Section ---- */
+.domainSection {
+  position: relative;
+  z-index: 1;
+  padding: var(--space-16) var(--space-6);
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.sectionLabel {
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--spectral-1);
+  margin-bottom: var(--space-8);
+  text-align: center;
+}
+
+.domainGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-6);
+}
+
+/* Card stagger on reveal */
+.domainGrid > * {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 500ms var(--ease-enter),
+    transform 500ms var(--ease-enter);
+}
+
+.domainGridVisible > *:nth-child(1) { transition-delay: 0ms; }
+.domainGridVisible > *:nth-child(2) { transition-delay: 30ms; }
+.domainGridVisible > *:nth-child(3) { transition-delay: 60ms; }
+.domainGridVisible > *:nth-child(4) { transition-delay: 90ms; }
+.domainGridVisible > *:nth-child(5) { transition-delay: 120ms; }
+.domainGridVisible > *:nth-child(6) { transition-delay: 150ms; }
+
+.domainGridVisible > * {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.viewAll {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-8);
+}
+
+/* ---- Editorial Section ---- */
+.editorial {
+  position: relative;
+  z-index: 1;
+  background: var(--deep);
+  padding: var(--space-24) var(--space-6);
+}
+
+.editorialInner {
+  max-width: 960px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: var(--space-12);
+  align-items: center;
+}
+
+.quote {
+  font-family: var(--font-display);
+  font-size: var(--text-display-md);
+  font-weight: 600;
+  font-style: italic;
+  color: var(--ghost-white);
+  line-height: 1.4;
+}
+
+.quoteAccent {
+  color: var(--spectral-1);
+}
+
+.editorialBody {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--text-secondary);
+  line-height: 1.8;
+}
+
+.editorialBody p + p {
+  margin-top: var(--space-4);
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 767px) {
+  .domainGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .editorialInner {
+    grid-template-columns: 1fr;
+    gap: var(--space-8);
+  }
+
+  .quote {
+    font-size: var(--text-display-md);
+  }
+}
+
+@media (max-width: 479px) {
+  .domainGrid {
+    grid-template-columns: 1fr;
+  }
+}

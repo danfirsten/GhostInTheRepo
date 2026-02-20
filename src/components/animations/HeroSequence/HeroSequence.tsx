@@ -16,20 +16,19 @@ export function HeroSequence() {
   }, [setIsHeroPage]);
 
   useEffect(() => {
-    // Respect reduced motion — show everything immediately
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setStep(7);
       return;
     }
 
     const timers = [
-      setTimeout(() => setStep(1), 100),   // ghost logo
-      setTimeout(() => setStep(2), 300),   // headline 1
-      setTimeout(() => setStep(3), 450),   // headline 2
-      setTimeout(() => setStep(4), 600),   // subheading
-      setTimeout(() => setStep(5), 750),   // CTA buttons
-      setTimeout(() => setStep(6), 900),   // particle field (handled by parent)
-      setTimeout(() => setStep(7), 1200),  // nav links (handled by navbar)
+      setTimeout(() => setStep(1), 100),
+      setTimeout(() => setStep(2), 300),
+      setTimeout(() => setStep(3), 450),
+      setTimeout(() => setStep(4), 600),
+      setTimeout(() => setStep(5), 750),
+      setTimeout(() => setStep(6), 900),
+      setTimeout(() => setStep(7), 1200),
     ];
 
     return () => timers.forEach(clearTimeout);
@@ -42,10 +41,10 @@ export function HeroSequence() {
       </div>
 
       <h1 className={`${styles.headline1} ${step >= 2 ? styles.visible : ""}`}>
-        Ghost in the Repo
+        Know the <span className={styles.gradientWord}>Machine.</span>
       </h1>
       <p className={`${styles.headline2} ${step >= 3 ? styles.visible : ""}`}>
-        Know the machine. Haunt it.
+        Haunt it.
       </p>
 
       <p className={`${styles.subheading} ${step >= 4 ? styles.visible : ""}`}>
@@ -55,11 +54,11 @@ export function HeroSequence() {
 
       <div className={styles.ctas}>
         <div className={`${styles.cta} ${step >= 5 ? styles.visible : ""}`}>
-          <Button href="/topics">Explore Topics</Button>
+          <Button href="/topics">Start Learning</Button>
         </div>
         <div className={`${styles.cta} ${step >= 5 ? styles.visible : ""}`}>
-          <Button variant="secondary" href="/paths">
-            Learning Paths
+          <Button variant="secondary" href="/topics">
+            Explore Topics
           </Button>
         </div>
       </div>
