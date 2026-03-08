@@ -5,6 +5,7 @@ import { Navbar } from "../Navbar/Navbar";
 import { Footer } from "../Footer/Footer";
 import { SearchOverlay } from "../Search/Search";
 import { HeroPageProvider } from "@/lib/hooks/useHeroPage";
+import { useAuth } from "@/lib/hooks/useAuth";
 import type { SearchItem } from "@/lib/data/search";
 import styles from "./PageShell.module.css";
 
@@ -15,6 +16,7 @@ interface PageShellProps {
 
 export function PageShell({ children, searchItems }: PageShellProps) {
   const [searchOpen, setSearchOpen] = useState(false);
+  const { user } = useAuth();
 
   const openSearch = useCallback(() => setSearchOpen(true), []);
   const closeSearch = useCallback(() => setSearchOpen(false), []);
@@ -34,7 +36,7 @@ export function PageShell({ children, searchItems }: PageShellProps) {
   return (
     <HeroPageProvider>
       <div className={styles.shell}>
-        <Navbar onSearchOpen={openSearch} />
+        <Navbar onSearchOpen={openSearch} user={user} />
         <main className={styles.main}>{children}</main>
         <Footer />
         <SearchOverlay

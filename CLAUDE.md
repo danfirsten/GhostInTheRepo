@@ -4,14 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Ghost in the Repo is a fully static, read-only reference platform for software engineers. No database, no auth, no progress tracking — deploys anywhere as pure static files.
+Ghost in the Repo is a reference platform for software engineers with user accounts, progress tracking, and an achievement system. Content pages are statically generated; auth and user data are powered by Supabase.
 
-**Stack:** Next.js 16 (App Router), TypeScript, CSS Modules + CSS Custom Properties, Shiki (custom "Spectral" syntax theme), Phosphor Icons, Fuse.js (client-side search), D3.js (knowledge graph), Framer Motion (graph + page transitions only).
+**Stack:** Next.js 16 (App Router), TypeScript, CSS Modules + CSS Custom Properties, Shiki (custom "Spectral" syntax theme), Phosphor Icons, Fuse.js (client-side search), D3.js (knowledge graph), Framer Motion (graph + page transitions only), Supabase (auth + PostgreSQL + RLS).
 
 ## Key Architecture Decisions
 
-- **No backend.** Zero serverless functions. `next build` must produce fully static output.
-- **No database or auth.** No user accounts, no progress tracking, no localStorage for user state (search history is the sole localStorage use).
+- **Hybrid static + server.** Content pages are statically generated at build time. Auth, user data, and progress tracking use Supabase via API routes and middleware.
+- **Supabase for auth and data.** Google OAuth + email/password login. User profiles, progress tracking, badges, and bookmarks stored in PostgreSQL with Row Level Security.
 - **CSS-first animations.** Use CSS keyframes and transitions for everything except the D3.js knowledge graph and page transitions (Framer Motion).
 - **Self-hosted fonts via `next/font/google`.** Fraunces (display), Syne (UI), Epilogue (body), JetBrains Mono (code).
 - **Content sourced from `docs/research/`** — 14 domains of markdown files parsed at build time with `gray-matter`.
@@ -20,7 +20,8 @@ Ghost in the Repo is a fully static, read-only reference platform for software e
 
 All design and architecture specs live in `docs/`:
 
-- `docs/implementation_plan.md` — **The build plan.** 11 phases, dependency map, every file/component specified. This is the source of truth for what to build and in what order.
+- `docs/implementation_plan.md` — **The original build plan.** 11 phases for the static platform (Phases 1–10 complete, Phase 11 pending).
+- `docs/implementation_plan_user_system.md` — **User system plan.** Phases 12–16: auth, profiles, progress tracking, badges, and polish.
 - `docs/brainstorm/UI-UX/00-overview.md` — Quick reference: fonts, palette, tech stack, all 14 domains.
 - `docs/brainstorm/UI-UX/01-vision-and-concept.md` — Brand identity, site architecture, ghost metaphor.
 - `docs/brainstorm/UI-UX/02-design-system.md` — All CSS custom properties (colors, spacing, typography, elevation), Spectral syntax theme token colors, Phosphor icon mapping.
@@ -61,7 +62,7 @@ eye blink, and hover glow interactions per 04-components spec.
 
 ```bash
 npm run dev        # local dev server
-npm run build      # static production build
+npm run build      # production build (hybrid static + server)
 npm run start      # serve production build locally
 npm run lint       # ESLint
 ```

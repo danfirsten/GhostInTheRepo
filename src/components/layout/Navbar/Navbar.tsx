@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { MagnifyingGlass, List, X } from "@phosphor-icons/react";
+import { MagnifyingGlass, List, X, SignIn } from "@phosphor-icons/react";
 import { GhostLogo } from "@/components/ui/GhostLogo";
+import { UserMenu } from "@/components/auth/UserMenu/UserMenu";
 import { useHeroPage } from "@/lib/hooks/useHeroPage";
 import styles from "./Navbar.module.css";
+import type { User } from "@supabase/supabase-js";
 
 const navLinks = [
   { href: "/topics", label: "Topics" },
@@ -15,9 +17,10 @@ const navLinks = [
 
 interface NavbarProps {
   onSearchOpen: () => void;
+  user?: User | null;
 }
 
-export function Navbar({ onSearchOpen }: NavbarProps) {
+export function Navbar({ onSearchOpen, user }: NavbarProps) {
   const pathname = usePathname();
   const { isHeroPage } = useHeroPage();
   const [scrolled, setScrolled] = useState(false);
@@ -63,7 +66,7 @@ export function Navbar({ onSearchOpen }: NavbarProps) {
           ))}
         </div>
 
-        {/* Right: Search + Hamburger */}
+        {/* Right: Search + Auth + Mobile Toggle */}
         <div className={styles.right}>
           <button
             className={styles.searchBtn}
@@ -79,6 +82,17 @@ export function Navbar({ onSearchOpen }: NavbarProps) {
               ? "⌘K"
               : "Ctrl+K"}
           </span>
+
+          {/* Auth: User menu or sign-in link */}
+          {user ? (
+            <UserMenu user={user} />
+          ) : (
+            <a href="/auth/login" className={styles.signInBtn}>
+              <SignIn size={18} weight="regular" />
+              <span className={styles.signInText}>Sign In</span>
+            </a>
+          )}
+
           <button
             className={styles.hamburger}
             onClick={() => setDrawerOpen(!drawerOpen)}
@@ -121,6 +135,21 @@ export function Navbar({ onSearchOpen }: NavbarProps) {
             >
               Search
             </button>
+            {!user && (
+              <a href="/auth/login" className={styles.drawerLink}>
+                Sign In
+              </a>
+            )}
+            {user && (
+              <>
+                <a href="/profile" className={styles.drawerLink}>
+                  Profile
+                </a>
+                <a href="/profile/settings" className={styles.drawerLink}>
+                  Settings
+                </a>
+              </>
+            )}
           </div>
         </>
       )}

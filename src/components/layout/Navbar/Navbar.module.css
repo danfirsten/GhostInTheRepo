@@ -179,6 +179,34 @@
   background: rgba(167, 139, 250, 0.08);
 }
 
+/* ---- Sign In Button ---- */
+.signInBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.signInBtn:hover {
+  background: var(--surface);
+  border-color: var(--spectral-1);
+  color: var(--ghost-white);
+}
+
+.signInText {
+  /* Hidden on mobile, shown on desktop */
+}
+
 /* ---- Responsive ---- */
 @media (max-width: 767px) {
   .center {
@@ -195,5 +223,9 @@
 
   .hamburger {
     display: flex;
+  }
+
+  .signInText {
+    display: none;
   }
 }
