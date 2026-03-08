@@ -1,0 +1,30 @@
+.wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.ghost {
+  transition: opacity 600ms ease;
+}
+
+.glowing .ghost {
+  filter: drop-shadow(0 0 var(--glow-intensity) rgba(167, 139, 250, 0.4));
+}
+
+.chromatic .ghost {
+  filter:
+    drop-shadow(0 0 calc(var(--glow-intensity) * 0.5) rgba(167, 139, 250, 0.5))
+    drop-shadow(0 0 calc(var(--glow-intensity) * 0.8) rgba(125, 211, 252, 0.3))
+    drop-shadow(0 0 var(--glow-intensity) rgba(52, 211, 153, 0.2));
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+
+.glowing {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
