@@ -8,7 +8,13 @@ import styles from "./DomainProgressBar.module.css";
  * Client component that fetches and displays domain progress.
  * Renders inline on the Topics hub — hidden when not logged in.
  */
-export function DomainProgressBar({ domainSlug }: { domainSlug: string }) {
+interface DomainProgressBarProps {
+  domainSlug: string;
+  /** Total number of topics in this domain (needed for accurate %) */
+  totalTopics?: number;
+}
+
+export function DomainProgressBar({ domainSlug, totalTopics }: DomainProgressBarProps) {
   const { user } = useAuth();
   const [pct, setPct] = useState<number | null>(null);
 
@@ -17,16 +23,18 @@ export function DomainProgressBar({ domainSlug }: { domainSlug: string }) {
 
     fetch(`/api/user/progress?domain=${domainSlug}`)
       .then((r) => r.json())
-      .then((data: Array<{ progress_pct: number }>) => {
-        if (!Array.isArray(data) || data.length === 0) return;
-        const completed = data.filter((p) => p.progress_pct >= 100).length;
-        const total = data.length;
-        if (total > 0) {
-          setPct(Math.round((completed / total) * 100));
+      .then((data: Array<{ progress_pct: number; content_type: string }>) => {
+        if (!Array.isArray(data)) return;
+        const topicEntries = data.filter((p) => p.content_type === "topic");
+        const completed = topicEntries.filter((p) => p.progress_pct >= 100).length;
+        // Use provided totalTopics for accurate denominator, fall back to data length
+        const denominator = totalTopics ?? topicEntries.length;
+        if (denominator > 0 && completed > 0) {
+          setPct(Math.round((completed / denominator) * 100));
         }
       })
       .catch(() => {});
-  }, [user, domainSlug]);
+  }, [user, domainSlug, totalTopics]);
 
   if (!user || pct === null || pct === 0) return null;
 

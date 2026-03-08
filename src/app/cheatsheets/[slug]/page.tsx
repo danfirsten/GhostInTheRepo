@@ -4,6 +4,7 @@ import { ArrowLeft } from "@phosphor-icons/react/dist/ssr";
 import { getAllDomainSlugs, getDomain, getCheatsheet } from "@/lib/data";
 import { CheatsheetSection } from "@/components/ui/Cheatsheet";
 import { ContentActions } from "@/components/ui/ContentActions/ContentActions";
+import { SignInCallout } from "@/components/ui/SignInCallout/SignInCallout";
 import { CheatsheetActions } from "./CheatsheetClient";
 import styles from "./cheatsheet.module.css";
 
@@ -58,6 +59,7 @@ export default async function CheatsheetPage({ params }: PageProps) {
         domainSlug={slug}
         completeLabel="Mark as Reviewed"
       />
+      <SignInCallout />
     </main>
   );
 }

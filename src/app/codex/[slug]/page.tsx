@@ -7,6 +7,7 @@ import { getAllCodexSlugs, getCodexArticle, getDomain } from "@/lib/data";
 import { Tag, DifficultyBadge } from "@/components/ui/Tag";
 import { Callout } from "@/components/ui/Callout";
 import { ContentActions } from "@/components/ui/ContentActions/ContentActions";
+import { SignInCallout } from "@/components/ui/SignInCallout/SignInCallout";
 import { ReadingProgress } from "./ReadingProgress";
 import styles from "./article.module.css";
 
@@ -83,6 +84,7 @@ export default async function CodexArticlePage({ params }: PageProps) {
           contentSlug={slug}
           domainSlug={article.domain}
         />
+        <SignInCallout />
       </main>
     </>
   );

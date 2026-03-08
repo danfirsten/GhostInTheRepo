@@ -1,0 +1,11 @@
+.checkmark {
+  display: none;
+}
+
+.inlineCheck {
+  display: inline-flex;
+  align-items: center;
+  color: var(--spectral-3);
+  flex-shrink: 0;
+  margin-left: auto;
+}

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ArrowRight } from "@phosphor-icons/react/dist/ssr";
+import { ArrowLeft } from "@phosphor-icons/react/dist/ssr";
 import {
   getAllDomainSlugs,
   getDomain,
@@ -10,6 +10,7 @@ import {
 } from "@/lib/data";
 import { getDomainIcon } from "@/lib/domain-icons";
 import { CheatsheetSection } from "@/components/ui/Cheatsheet";
+import { TopicListClient } from "./TopicListClient";
 import styles from "./topic.module.css";
 
 interface PageProps {
@@ -55,8 +56,6 @@ export default async function TopicPage({ params }: PageProps) {
     }
   }
   relatedSlugs.delete(slug);
-
-  const Icon = getDomainIcon(slug);
 
   // TOC sections = topic titles
   const tocSections = topics.map((t) => ({
@@ -118,37 +117,18 @@ export default async function TopicPage({ params }: PageProps) {
 
         {/* Topics & Subtopics */}
         <div className={styles.sectionLabel}>Topics</div>
-        <div className={styles.subtopicList}>
-          {topics.map((topic) => (
-            <div key={topic.slug} id={topic.slug}>
-              <a
-                href={`/topics/${slug}/${topic.slug}`}
-                className={styles.topicLink}
-              >
-                <Icon size={18} weight="duotone" />
-                <span className={styles.subtopicTitle}>{topic.title}</span>
-                <ArrowRight
-                  size={14}
-                  weight="bold"
-                  className={styles.topicArrow}
-                />
-              </a>
-              {topic.subtopics.length > 0 && (
-                <div style={{ paddingLeft: "var(--space-10)" }}>
-                  {topic.subtopics.map((sub) => (
-                    <a
-                      key={sub.id}
-                      href={`/topics/${slug}/${topic.slug}#${sub.slug}`}
-                      className={styles.subLink}
-                    >
-                      {sub.title}
-                    </a>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+        <TopicListClient
+          domainSlug={slug}
+          topics={topics.map((t) => ({
+            slug: t.slug,
+            title: t.title,
+            subtopics: t.subtopics.map((s) => ({
+              id: s.id,
+              slug: s.slug,
+              title: s.title,
+            })),
+          }))}
+        />
       </div>
 
       {/* TOC Column */}

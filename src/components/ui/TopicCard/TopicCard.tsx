@@ -10,9 +10,10 @@ interface TopicCardSmProps {
   icon: ComponentType<IconProps>;
   href: string;
   domainSlug?: string;
+  totalTopics?: number;
 }
 
-export function TopicCardSm({ title, subtopicCount, icon: Icon, href, domainSlug }: TopicCardSmProps) {
+export function TopicCardSm({ title, subtopicCount, icon: Icon, href, domainSlug, totalTopics }: TopicCardSmProps) {
   return (
     <a href={href} className={styles.small}>
       <span className={styles.iconWrap}>
@@ -20,7 +21,7 @@ export function TopicCardSm({ title, subtopicCount, icon: Icon, href, domainSlug
       </span>
       <span className={styles.title}>{title}</span>
       <span className={styles.count}>{subtopicCount} subtopics</span>
-      {domainSlug && <DomainProgressBar domainSlug={domainSlug} />}
+      {domainSlug && <DomainProgressBar domainSlug={domainSlug} totalTopics={totalTopics} />}
       <span className={styles.arrow}><ArrowRight weight="bold" /></span>
     </a>
   );
@@ -34,6 +35,7 @@ interface TopicCardMdProps {
   subtopics?: string[];
   maxPreview?: number;
   domainSlug?: string;
+  totalTopics?: number;
 }
 
 export function TopicCardMd({
@@ -44,6 +46,7 @@ export function TopicCardMd({
   subtopics = [],
   maxPreview = 3,
   domainSlug,
+  totalTopics,
 }: TopicCardMdProps) {
   const visible = subtopics.slice(0, maxPreview);
   const remaining = subtopicCount - visible.length;
@@ -61,7 +64,7 @@ export function TopicCardMd({
         <span className={styles.arrow}><ArrowRight weight="bold" /></span>
       </div>
 
-      {domainSlug && <DomainProgressBar domainSlug={domainSlug} />}
+      {domainSlug && <DomainProgressBar domainSlug={domainSlug} totalTopics={totalTopics} />}
 
       {visible.length > 0 && (
         <>
@@ -88,6 +91,7 @@ interface TopicCardLgProps {
   href: string;
   subtopics?: string[];
   domainSlug?: string;
+  totalTopics?: number;
 }
 
 export function TopicCardLg({
@@ -98,6 +102,7 @@ export function TopicCardLg({
   href,
   subtopics = [],
   domainSlug,
+  totalTopics,
 }: TopicCardLgProps) {
   return (
     <a href={href} className={styles.large}>
@@ -108,7 +113,7 @@ export function TopicCardLg({
       <p className={styles.descriptionText}>{description}</p>
       <span className={styles.count}>{subtopicCount} subtopics</span>
 
-      {domainSlug && <DomainProgressBar domainSlug={domainSlug} />}
+      {domainSlug && <DomainProgressBar domainSlug={domainSlug} totalTopics={totalTopics} />}
 
       {subtopics.length > 0 && (
         <div className={styles.mediumSubtopics}>

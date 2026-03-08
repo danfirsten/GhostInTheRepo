@@ -70,3 +70,14 @@
   color: var(--spectral-4);
   border-bottom-color: rgba(244, 114, 182, 0.1);
 }
+
+.signIn {
+  composes: callout;
+  background: rgba(167, 139, 250, 0.04);
+  border-color: rgba(167, 139, 250, 0.12);
+}
+
+.signIn .header {
+  color: var(--spectral-1);
+  border-bottom-color: rgba(167, 139, 250, 0.08);
+}

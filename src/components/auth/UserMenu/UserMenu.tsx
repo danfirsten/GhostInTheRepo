@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { User, SignOut, GearSix } from "@phosphor-icons/react";
+import { User, SignOut, GearSix, BookmarkSimple } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 import { GhostLogo } from "@/components/ui/GhostLogo";
 import styles from "./UserMenu.module.css";
@@ -78,6 +78,14 @@ export function UserMenu({ user }: UserMenuProps) {
           >
             <User size={16} weight="regular" />
             Profile
+          </a>
+          <a
+            href="/profile/bookmarks"
+            className={styles.dropdownItem}
+            onClick={() => setOpen(false)}
+          >
+            <BookmarkSimple size={16} weight="regular" />
+            Bookmarks
           </a>
           <a
             href="/profile/settings"

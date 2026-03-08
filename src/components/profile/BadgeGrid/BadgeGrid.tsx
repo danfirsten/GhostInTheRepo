@@ -23,6 +23,15 @@ export function BadgeGrid({ earnedBadges }: BadgeGridProps) {
         </span>
       </div>
 
+      {earnedCount === 0 && (
+        <div className={styles.empty}>
+          <span className={styles.emptyGhost}>👻</span>
+          <p className={styles.emptyText}>
+            Your collection awaits. Start reading to earn your first badge.
+          </p>
+        </div>
+      )}
+
       {CATEGORY_ORDER.map((category) => {
         const badges = BADGE_DEFINITIONS.filter((b) => b.category === category);
         if (badges.length === 0) return null;

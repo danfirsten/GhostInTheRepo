@@ -27,38 +27,49 @@ export function ContentActions({
   const [isComplete, setIsComplete] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
 
   // Fetch initial state
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setFetching(false);
+      return;
+    }
 
-    // Check progress
-    fetch(`/api/user/progress?domain=${domainSlug ?? ""}`)
-      .then((r) => r.json())
-      .then((data: Array<{ content_type: string; content_slug: string; progress_pct: number }>) => {
-        if (Array.isArray(data)) {
-          const entry = data.find(
-            (p) => p.content_type === contentType && p.content_slug === contentSlug
-          );
-          if (entry && entry.progress_pct >= 100) {
-            setIsComplete(true);
+    let mounted = true;
+
+    Promise.all([
+      fetch(`/api/user/progress?domain=${domainSlug ?? ""}`)
+        .then((r) => r.json())
+        .then((data: Array<{ content_type: string; content_slug: string; progress_pct: number }>) => {
+          if (!mounted) return;
+          if (Array.isArray(data)) {
+            const entry = data.find(
+              (p) => p.content_type === contentType && p.content_slug === contentSlug
+            );
+            if (entry && entry.progress_pct >= 100) {
+              setIsComplete(true);
+            }
           }
-        }
-      })
-      .catch(() => {});
+        }),
+      fetch("/api/user/bookmarks")
+        .then((r) => r.json())
+        .then((data: Array<{ content_type: string; content_slug: string }>) => {
+          if (!mounted) return;
+          if (Array.isArray(data)) {
+            const found = data.some(
+              (b) => b.content_type === contentType && b.content_slug === contentSlug
+            );
+            setIsBookmarked(found);
+          }
+        }),
+    ])
+      .catch(() => {})
+      .finally(() => {
+        if (mounted) setFetching(false);
+      });
 
-    // Check bookmarks
-    fetch("/api/user/bookmarks")
-      .then((r) => r.json())
-      .then((data: Array<{ content_type: string; content_slug: string }>) => {
-        if (Array.isArray(data)) {
-          const found = data.some(
-            (b) => b.content_type === contentType && b.content_slug === contentSlug
-          );
-          setIsBookmarked(found);
-        }
-      })
-      .catch(() => {});
+    return () => { mounted = false; };
   }, [user, contentType, contentSlug, domainSlug]);
 
   const handleMarkComplete = useCallback(async () => {
@@ -120,6 +131,16 @@ export function ContentActions({
 
   // Don't render if not logged in
   if (!user) return null;
+
+  // Show subtle skeleton while fetching initial state
+  if (fetching) {
+    return (
+      <div className={styles.actions}>
+        <span className={styles.skeleton} />
+        <span className={styles.skeletonSm} />
+      </div>
+    );
+  }
 
   return (
     <div className={styles.actions}>

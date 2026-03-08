@@ -3,9 +3,30 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useAuth } from "./useAuth";
 
+const SHOWN_KEY = "ghost_badges_shown";
+
+/** Get badge IDs already shown this session */
+function getShownBadges(): Set<string> {
+  try {
+    const raw = sessionStorage.getItem(SHOWN_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+/** Mark badge IDs as shown this session */
+function markShown(ids: string[]) {
+  try {
+    const existing = getShownBadges();
+    for (const id of ids) existing.add(id);
+    sessionStorage.setItem(SHOWN_KEY, JSON.stringify([...existing]));
+  } catch {}
+}
+
 /**
  * Hook that checks for new badge unlocks after user actions.
- * Returns the queue of newly unlocked badge IDs and a dismiss function.
+ * Uses sessionStorage to avoid showing the same badge popup twice per session.
  */
 export function useBadgeChecker() {
   const { user } = useAuth();
@@ -13,7 +34,6 @@ export function useBadgeChecker() {
   const [currentBadge, setCurrentBadge] = useState<string | null>(null);
   const checkedRef = useRef(false);
 
-  // Run badge check on mount (once per page load)
   useEffect(() => {
     if (!user || checkedRef.current) return;
     checkedRef.current = true;
@@ -25,7 +45,7 @@ export function useBadgeChecker() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         isWitchingHour: hour >= 0 && hour < 4,
-        totalCodex: 0, // Will be populated if needed
+        totalCodex: 0,
         totalCheatsheets: 14,
         domainTotals: {},
       }),
@@ -33,8 +53,14 @@ export function useBadgeChecker() {
       .then((r) => r.json())
       .then((data: { newlyUnlocked?: string[] }) => {
         if (data.newlyUnlocked && data.newlyUnlocked.length > 0) {
-          setQueue(data.newlyUnlocked);
-          setCurrentBadge(data.newlyUnlocked[0]);
+          // Filter out badges already shown this session
+          const alreadyShown = getShownBadges();
+          const fresh = data.newlyUnlocked.filter((id) => !alreadyShown.has(id));
+          if (fresh.length > 0) {
+            markShown(fresh);
+            setQueue(fresh);
+            setCurrentBadge(fresh[0]);
+          }
         }
       })
       .catch(() => {});
@@ -48,7 +74,6 @@ export function useBadgeChecker() {
     });
   }, []);
 
-  /** Trigger badge check manually (e.g., after marking content complete) */
   const recheckBadges = useCallback(() => {
     if (!user) return;
 
@@ -67,8 +92,13 @@ export function useBadgeChecker() {
       .then((r) => r.json())
       .then((data: { newlyUnlocked?: string[] }) => {
         if (data.newlyUnlocked && data.newlyUnlocked.length > 0) {
-          setQueue((prev) => [...prev, ...data.newlyUnlocked!]);
-          setCurrentBadge((cur) => cur ?? data.newlyUnlocked![0]);
+          const alreadyShown = getShownBadges();
+          const fresh = data.newlyUnlocked.filter((id) => !alreadyShown.has(id));
+          if (fresh.length > 0) {
+            markShown(fresh);
+            setQueue((prev) => [...prev, ...fresh]);
+            setCurrentBadge((cur) => cur ?? fresh[0]);
+          }
         }
       })
       .catch(() => {});

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import styles from "./Callout.module.css";
 
-export type CalloutVariant = "key-insight" | "gotcha" | "mental-model" | "deep-dive";
+export type CalloutVariant = "key-insight" | "gotcha" | "mental-model" | "deep-dive" | "sign-in";
 
 const variantConfig: Record<
   CalloutVariant,
@@ -11,6 +11,7 @@ const variantConfig: Record<
   gotcha: { icon: "⚠️", label: "Gotcha", className: styles.gotcha },
   "mental-model": { icon: "🔗", label: "Mental Model", className: styles.mentalModel },
   "deep-dive": { icon: "🔐", label: "Deep Dive", className: styles.deepDive },
+  "sign-in": { icon: "👻", label: "Track Your Progress", className: styles.signIn },
 };
 
 interface CalloutProps {
