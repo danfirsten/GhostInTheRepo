@@ -1,0 +1,155 @@
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--surface-raised);
+  background: var(--surface-card);
+  cursor: pointer;
+  transition: border-color 300ms ease, box-shadow 300ms ease;
+  user-select: none;
+}
+
+.card:hover {
+  border-color: var(--border-subtle);
+}
+
+/* ── Rarity tiers ─────────────────────────────── */
+
+.locked {
+  opacity: 0.35;
+}
+
+.locked .iconWrap {
+  filter: grayscale(1);
+}
+
+.common {
+  border-color: var(--border-subtle);
+}
+
+.uncommon {
+  border-color: var(--spectral-3);
+}
+
+.uncommon:hover {
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.15);
+}
+
+.rare {
+  border-color: var(--spectral-2);
+}
+
+.rare:hover {
+  box-shadow: 0 0 12px rgba(125, 211, 252, 0.2);
+}
+
+.epic {
+  border-color: var(--spectral-1);
+  box-shadow: 0 0 8px rgba(167, 139, 250, 0.15);
+}
+
+.epic:hover {
+  box-shadow: 0 0 16px rgba(167, 139, 250, 0.3);
+}
+
+.legendary {
+  border-color: var(--spectral-5);
+  box-shadow: 0 0 10px rgba(251, 146, 60, 0.2);
+  animation: legendaryPulse 3s ease-in-out infinite;
+}
+
+.legendary:hover {
+  box-shadow: 0 0 20px rgba(251, 146, 60, 0.4);
+}
+
+@keyframes legendaryPulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(251, 146, 60, 0.2); }
+  50% { box-shadow: 0 0 16px rgba(251, 146, 60, 0.35); }
+}
+
+/* ── Inner elements ───────────────────────────── */
+
+.iconWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  color: var(--ghost-white);
+}
+
+.name {
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--ghost-white);
+  text-align: center;
+  line-height: 1.2;
+  min-height: 2em;
+  display: flex;
+  align-items: center;
+}
+
+.rarity {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  min-height: 1em;
+}
+
+/* ── Tooltip ──────────────────────────────────── */
+
+.tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  min-width: 180px;
+  max-width: 240px;
+  z-index: 20;
+  pointer-events: none;
+  animation: tooltipIn 150ms ease;
+}
+
+@keyframes tooltipIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.tooltipTitle {
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: var(--ghost-white);
+  margin-bottom: var(--space-1);
+}
+
+.tooltipDesc {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.tooltipHint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
+  line-height: 1.4;
+}
+
+.tooltipDate {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  margin-top: var(--space-2);
+}

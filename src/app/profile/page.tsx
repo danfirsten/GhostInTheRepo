@@ -5,6 +5,8 @@ import { getUserProfile, getProfileStats, calculateGhostLevel } from "@/lib/db/q
 import { ProfileHeader } from "@/components/profile/ProfileHeader/ProfileHeader";
 import { StatsGrid } from "@/components/profile/StatsGrid/StatsGrid";
 import { DomainProgress } from "@/components/profile/DomainProgress/DomainProgress";
+import { BadgeGrid } from "@/components/profile/BadgeGrid/BadgeGrid";
+import type { EarnedBadge } from "@/lib/badges/types";
 import styles from "./profile.module.css";
 
 export const metadata: Metadata = {
@@ -27,6 +29,18 @@ export default async function ProfilePage() {
   if (!profile) {
     redirect("/auth/login");
   }
+
+  // Fetch earned badges
+  const { data: badgeRows } = await supabase
+    .from("user_badges")
+    .select("badge_id, earned_at")
+    .eq("user_id", user.id)
+    .order("earned_at", { ascending: false });
+
+  const earnedBadges: EarnedBadge[] = (badgeRows ?? []).map((b: { badge_id: string; earned_at: string }) => ({
+    badge_id: b.badge_id,
+    earned_at: b.earned_at,
+  }));
 
   const totalContent = stats.totalTopics + stats.totalCheatsheets + stats.totalPaths;
   const completedContent =
@@ -56,6 +70,8 @@ export default async function ProfilePage() {
       />
 
       <DomainProgress domains={stats.domainProgress} />
+
+      <BadgeGrid earnedBadges={earnedBadges} />
     </div>
   );
 }

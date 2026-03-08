@@ -7,6 +7,8 @@ import { SearchOverlay } from "../Search/Search";
 import { HeroPageProvider } from "@/lib/hooks/useHeroPage";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { DailyVisitTracker } from "@/components/ui/DailyVisitTracker/DailyVisitTracker";
+import { BadgeUnlockOverlay } from "@/components/ui/BadgeUnlockOverlay/BadgeUnlockOverlay";
+import { useBadgeChecker } from "@/lib/hooks/useBadgeChecker";
 import type { SearchItem } from "@/lib/data/search";
 import styles from "./PageShell.module.css";
 
@@ -18,6 +20,7 @@ interface PageShellProps {
 export function PageShell({ children, searchItems }: PageShellProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const { user } = useAuth();
+  const { currentBadge, dismiss: dismissBadge } = useBadgeChecker();
 
   const openSearch = useCallback(() => setSearchOpen(true), []);
   const closeSearch = useCallback(() => setSearchOpen(false), []);
@@ -46,6 +49,7 @@ export function PageShell({ children, searchItems }: PageShellProps) {
           onClose={closeSearch}
           searchItems={searchItems}
         />
+        <BadgeUnlockOverlay badgeId={currentBadge} onDismiss={dismissBadge} />
       </div>
     </HeroPageProvider>
   );
