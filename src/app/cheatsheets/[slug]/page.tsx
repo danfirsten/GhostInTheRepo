@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "@phosphor-icons/react/dist/ssr";
 import { getAllDomainSlugs, getDomain, getCheatsheet } from "@/lib/data";
 import { CheatsheetSection } from "@/components/ui/Cheatsheet";
+import { ContentActions } from "@/components/ui/ContentActions/ContentActions";
 import { CheatsheetActions } from "./CheatsheetClient";
 import styles from "./cheatsheet.module.css";
 
@@ -50,6 +51,13 @@ export default async function CheatsheetPage({ params }: PageProps) {
           <CheatsheetSection key={section.title} section={section} />
         ))}
       </div>
+
+      <ContentActions
+        contentType="cheatsheet"
+        contentSlug={slug}
+        domainSlug={slug}
+        completeLabel="Mark as Reviewed"
+      />
     </main>
   );
 }

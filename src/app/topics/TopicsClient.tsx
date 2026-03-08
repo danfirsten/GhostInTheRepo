@@ -104,6 +104,7 @@ export function TopicsClient({ domains, topicsByDomain }: TopicsClientProps) {
                       icon={Icon}
                       href={`/topics/${domain.slug}`}
                       subtopics={subtopicNames.slice(0, 4)}
+                      domainSlug={domain.slug}
                     />
                   </div>
                 );
@@ -118,6 +119,7 @@ export function TopicsClient({ domains, topicsByDomain }: TopicsClientProps) {
                     icon={Icon}
                     href={`/topics/${domain.slug}`}
                     subtopics={subtopicNames.slice(0, 3)}
+                    domainSlug={domain.slug}
                   />
                 );
               }
@@ -129,6 +131,7 @@ export function TopicsClient({ domains, topicsByDomain }: TopicsClientProps) {
                   subtopicCount={totalSubtopics}
                   icon={Icon}
                   href={`/topics/${domain.slug}`}
+                  domainSlug={domain.slug}
                 />
               );
             })}

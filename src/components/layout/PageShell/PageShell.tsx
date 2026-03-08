@@ -6,6 +6,7 @@ import { Footer } from "../Footer/Footer";
 import { SearchOverlay } from "../Search/Search";
 import { HeroPageProvider } from "@/lib/hooks/useHeroPage";
 import { useAuth } from "@/lib/hooks/useAuth";
+import { DailyVisitTracker } from "@/components/ui/DailyVisitTracker/DailyVisitTracker";
 import type { SearchItem } from "@/lib/data/search";
 import styles from "./PageShell.module.css";
 
@@ -37,6 +38,7 @@ export function PageShell({ children, searchItems }: PageShellProps) {
     <HeroPageProvider>
       <div className={styles.shell}>
         <Navbar onSearchOpen={openSearch} user={user} />
+        <DailyVisitTracker />
         <main className={styles.main}>{children}</main>
         <Footer />
         <SearchOverlay

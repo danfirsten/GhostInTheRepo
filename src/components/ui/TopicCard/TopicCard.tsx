@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 import type { IconProps } from "@phosphor-icons/react";
 import { ArrowRight } from "@phosphor-icons/react/dist/ssr";
+import { DomainProgressBar } from "@/components/ui/DomainProgressBar/DomainProgressBar";
 import styles from "./TopicCard.module.css";
 
 interface TopicCardSmProps {
@@ -8,9 +9,10 @@ interface TopicCardSmProps {
   subtopicCount: number;
   icon: ComponentType<IconProps>;
   href: string;
+  domainSlug?: string;
 }
 
-export function TopicCardSm({ title, subtopicCount, icon: Icon, href }: TopicCardSmProps) {
+export function TopicCardSm({ title, subtopicCount, icon: Icon, href, domainSlug }: TopicCardSmProps) {
   return (
     <a href={href} className={styles.small}>
       <span className={styles.iconWrap}>
@@ -18,6 +20,7 @@ export function TopicCardSm({ title, subtopicCount, icon: Icon, href }: TopicCar
       </span>
       <span className={styles.title}>{title}</span>
       <span className={styles.count}>{subtopicCount} subtopics</span>
+      {domainSlug && <DomainProgressBar domainSlug={domainSlug} />}
       <span className={styles.arrow}><ArrowRight weight="bold" /></span>
     </a>
   );
@@ -30,6 +33,7 @@ interface TopicCardMdProps {
   href: string;
   subtopics?: string[];
   maxPreview?: number;
+  domainSlug?: string;
 }
 
 export function TopicCardMd({
@@ -39,6 +43,7 @@ export function TopicCardMd({
   href,
   subtopics = [],
   maxPreview = 3,
+  domainSlug,
 }: TopicCardMdProps) {
   const visible = subtopics.slice(0, maxPreview);
   const remaining = subtopicCount - visible.length;
@@ -55,6 +60,8 @@ export function TopicCardMd({
         </div>
         <span className={styles.arrow}><ArrowRight weight="bold" /></span>
       </div>
+
+      {domainSlug && <DomainProgressBar domainSlug={domainSlug} />}
 
       {visible.length > 0 && (
         <>
@@ -80,6 +87,7 @@ interface TopicCardLgProps {
   icon: ComponentType<IconProps>;
   href: string;
   subtopics?: string[];
+  domainSlug?: string;
 }
 
 export function TopicCardLg({
@@ -89,6 +97,7 @@ export function TopicCardLg({
   icon: Icon,
   href,
   subtopics = [],
+  domainSlug,
 }: TopicCardLgProps) {
   return (
     <a href={href} className={styles.large}>
@@ -98,6 +107,8 @@ export function TopicCardLg({
       <span className={styles.titleLarge}>{title}</span>
       <p className={styles.descriptionText}>{description}</p>
       <span className={styles.count}>{subtopicCount} subtopics</span>
+
+      {domainSlug && <DomainProgressBar domainSlug={domainSlug} />}
 
       {subtopics.length > 0 && (
         <div className={styles.mediumSubtopics}>

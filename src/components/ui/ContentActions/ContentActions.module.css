@@ -1,0 +1,72 @@
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+  margin-top: var(--space-6);
+  border-top: 1px solid var(--border-ghost);
+}
+
+.completeBtn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.completeBtn:hover:not(:disabled) {
+  background: var(--surface-raised);
+  border-color: var(--spectral-3);
+  color: var(--ghost-white);
+}
+
+.completeBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.completed {
+  border-color: rgba(52, 211, 153, 0.3);
+  color: var(--spectral-3);
+  background: rgba(52, 211, 153, 0.06);
+}
+
+.completed:hover:not(:disabled) {
+  border-color: rgba(52, 211, 153, 0.5);
+  color: var(--spectral-3);
+}
+
+.bookmarkBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.bookmarkBtn:hover {
+  background: var(--surface-raised);
+  border-color: var(--spectral-5);
+  color: var(--spectral-5);
+}
+
+.bookmarked {
+  color: var(--spectral-5);
+  border-color: rgba(251, 146, 60, 0.3);
+  background: rgba(251, 146, 60, 0.06);
+}

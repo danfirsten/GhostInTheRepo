@@ -6,6 +6,7 @@ import { compileMDX } from "next-mdx-remote/rsc";
 import { getAllCodexSlugs, getCodexArticle, getDomain } from "@/lib/data";
 import { Tag, DifficultyBadge } from "@/components/ui/Tag";
 import { Callout } from "@/components/ui/Callout";
+import { ContentActions } from "@/components/ui/ContentActions/ContentActions";
 import { ReadingProgress } from "./ReadingProgress";
 import styles from "./article.module.css";
 
@@ -76,6 +77,12 @@ export default async function CodexArticlePage({ params }: PageProps) {
         </header>
 
         <div className={styles.content}>{mdxContent}</div>
+
+        <ContentActions
+          contentType="codex"
+          contentSlug={slug}
+          domainSlug={article.domain}
+        />
       </main>
     </>
   );

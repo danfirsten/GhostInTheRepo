@@ -18,6 +18,7 @@ import {
 } from "@/lib/data";
 import { Tag } from "@/components/ui/Tag";
 import { Callout } from "@/components/ui/Callout";
+import { ContentActions } from "@/components/ui/ContentActions/ContentActions";
 import { extractHeadings } from "@/lib/markdown/extract-headings";
 import { ReadingProgress } from "./ReadingProgress";
 import { TableOfContents } from "./TableOfContents";
@@ -120,6 +121,12 @@ export default async function TopicContentPage({ params }: PageProps) {
           </header>
 
           <div className={styles.prose}>{mdxContent}</div>
+
+          <ContentActions
+            contentType="topic"
+            contentSlug={topic}
+            domainSlug={slug}
+          />
 
           {/* Related Codex Articles */}
           {relatedArticles.length > 0 && (
