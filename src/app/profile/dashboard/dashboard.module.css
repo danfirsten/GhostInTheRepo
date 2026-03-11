@@ -1,0 +1,347 @@
+.page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: calc(64px + var(--space-10)) var(--space-6) var(--space-16);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+/* Back link */
+.backLink {
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  color: var(--text-tertiary);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  transition: color 0.2s ease;
+}
+
+.backLink:hover {
+  color: var(--spectral-1);
+}
+
+/* Section headings */
+.sectionHeading {
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-4);
+}
+
+/* Grid layout for radar + heatmap */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-6);
+}
+
+@media (min-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Card */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border-ghost);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  overflow: hidden;
+}
+
+.cardTitle {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--text-primary);
+  margin-bottom: var(--space-4);
+}
+
+/* Heatmap */
+.heatmap {
+  overflow-x: auto;
+}
+
+.heatmapMonths {
+  display: flex;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-1);
+  padding-left: 28px;
+}
+
+.heatmapMonth {
+  flex: none;
+}
+
+.heatmapBody {
+  display: flex;
+  gap: 2px;
+}
+
+.heatmapDayLabels {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+.heatmapDayLabel {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  color: var(--text-tertiary);
+  height: 11px;
+  line-height: 11px;
+  width: 20px;
+  text-align: right;
+}
+
+.heatmapWeeks {
+  display: flex;
+  gap: 2px;
+}
+
+.heatmapWeek {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.heatmapCell {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  transition: outline 0.15s ease;
+}
+
+.heatmapCell:hover {
+  outline: 1px solid var(--ghost-white);
+  outline-offset: 1px;
+}
+
+/* Radar chart */
+.radarChart {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.radarChart svg {
+  width: 100%;
+  height: auto;
+  max-height: 360px;
+}
+
+/* Stale list */
+.staleSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.staleList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.staleItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border-ghost);
+  border-left: 3px solid var(--spectral-5);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+
+.staleIcon {
+  color: var(--spectral-5);
+  flex-shrink: 0;
+  font-size: 1.2rem;
+}
+
+.staleInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.staleDomain {
+  font-family: var(--font-ui);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.staleDays {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--text-tertiary);
+}
+
+.staleLink {
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  color: var(--spectral-5);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.2s ease;
+}
+
+.staleLink:hover {
+  color: var(--text-primary);
+}
+
+.staleEmpty {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text-tertiary);
+  padding: var(--space-3) 0;
+}
+
+/* Velocity chart */
+.velocityChart {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+}
+
+.velocityChart svg {
+  width: 100%;
+  height: auto;
+}
+
+/* Suggestions */
+.suggestionsGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+
+@media (min-width: 640px) {
+  .suggestionsGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.suggestionCard {
+  background: var(--surface);
+  border: 1px solid var(--border-ghost);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  text-decoration: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.suggestionCard:hover {
+  border-color: var(--spectral-1);
+  transform: translateY(-2px);
+}
+
+.suggestionDomain {
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--spectral-2);
+}
+
+.suggestionTopic {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.suggestionPct {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+.suggestionArrow {
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  color: var(--spectral-1);
+  margin-top: auto;
+}
+
+/* Loading skeleton */
+.skeleton {
+  background: var(--surface);
+  border: 1px solid var(--border-ghost);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  position: relative;
+}
+
+.skeletonTall {
+  height: 320px;
+}
+
+.skeletonMedium {
+  height: 200px;
+}
+
+.skeletonShort {
+  height: 120px;
+}
+
+.shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(167, 139, 250, 0.04) 50%,
+    transparent 100%
+  );
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Error state */
+.error {
+  text-align: center;
+  padding: var(--space-10);
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+}
+
+.errorRetry {
+  margin-top: var(--space-4);
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  color: var(--spectral-1);
+  background: none;
+  border: 1px solid var(--spectral-1);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.errorRetry:hover {
+  background: rgba(167, 139, 250, 0.1);
+}

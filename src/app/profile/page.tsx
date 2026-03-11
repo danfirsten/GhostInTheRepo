@@ -59,6 +59,10 @@ export default async function ProfilePage() {
         spectralDensity={densityPct}
       />
 
+      <a href="/profile/dashboard" className={styles.dashboardLink}>
+        View Knowledge Dashboard &rarr;
+      </a>
+
       <StatsGrid
         topicsCompleted={stats.topicsCompleted}
         totalTopics={stats.totalTopics}

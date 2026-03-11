@@ -14,3 +14,5 @@ export {
 export { getCheatsheet, getAllCheatsheets } from "./cheatsheets";
 export { getAllLearningPaths, getLearningPath } from "./paths";
 export { getAllCodexArticles, getCodexArticle, getAllCodexSlugs } from "./codex";
+export { getAllProjects, getProjectsForDomain, getProject } from "./projects";
+export { getQuizForTopic, getAllQuizzes } from "./quizzes";

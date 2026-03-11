@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { checkBadgeUnlocks } from "@/lib/badges/engine";
 import type { BadgeCheckContext } from "@/lib/badges/types";
+import { getAllDomains, getTopicsForDomain, getAllCodexArticles } from "@/lib/data";
 
 /**
  * POST /api/user/badges/check
@@ -84,23 +85,27 @@ export async function POST(request: Request) {
       .map((p) => p.domain_slug)
   ).size;
 
-  // Domain completion (from client-provided totals)
-  const domainTotals: Record<string, number> = body.domainTotals ?? {};
+  // Domain completion — compute server-side from actual content data
+  const allDomains = getAllDomains();
   const domainCompletion: Record<string, { completed: number; total: number }> = {};
   const domainsFullyCompleted: string[] = [];
 
-  for (const [slug, total] of Object.entries(domainTotals)) {
+  for (const domain of allDomains) {
+    const total = getTopicsForDomain(domain.slug).length;
     const completed = progress.filter(
       (p) =>
-        p.domain_slug === slug &&
+        p.domain_slug === domain.slug &&
         p.content_type === "topic" &&
         p.progress_pct >= 100
     ).length;
-    domainCompletion[slug] = { completed, total };
+    domainCompletion[domain.slug] = { completed, total };
     if (total > 0 && completed >= total) {
-      domainsFullyCompleted.push(slug);
+      domainsFullyCompleted.push(domain.slug);
     }
   }
+
+  // Compute total codex/cheatsheet counts server-side
+  const totalCodexCount = getAllCodexArticles().length;
 
   // Account number (approximate by total profile count)
   const totalProfiles = profileCountRes.count ?? 999;
@@ -112,8 +117,8 @@ export async function POST(request: Request) {
     topicsCompleted,
     cheatsheetsViewed,
     codexRead,
-    totalCodex: body.totalCodex ?? 0,
-    totalCheatsheets: body.totalCheatsheets ?? 14,
+    totalCodex: totalCodexCount,
+    totalCheatsheets: 14,
     currentStreak,
     domainsVisited,
     domainsFullyCompleted,

@@ -6,3 +6,25 @@
   flex-direction: column;
   gap: var(--space-6);
 }
+
+.dashboardLink {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--spectral-1);
+  text-decoration: none;
+  padding: var(--space-3) var(--space-5);
+  border: 1px solid var(--border-ghost);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  transition: border-color 0.2s ease, background 0.2s ease;
+  align-self: flex-start;
+}
+
+.dashboardLink:hover {
+  border-color: var(--spectral-1);
+  background: rgba(167, 139, 250, 0.06);
+}

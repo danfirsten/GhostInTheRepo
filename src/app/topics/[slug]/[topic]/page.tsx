@@ -15,11 +15,14 @@ import {
   getTopicsForDomain,
   getAllCodexArticles,
   getDomain,
+  getQuizForTopic,
 } from "@/lib/data";
 import { Tag } from "@/components/ui/Tag";
 import { Callout } from "@/components/ui/Callout";
 import { ContentActions } from "@/components/ui/ContentActions/ContentActions";
 import { SignInCallout } from "@/components/ui/SignInCallout/SignInCallout";
+import { TopicQuiz } from "@/components/ui/TopicQuiz";
+import { TopicNotes } from "@/components/ui/TopicNotes";
 import { extractHeadings } from "@/lib/markdown/extract-headings";
 import { ReadingProgress } from "./ReadingProgress";
 import { TableOfContents } from "./TableOfContents";
@@ -88,6 +91,9 @@ export default async function TopicContentPage({ params }: PageProps) {
   const nextTopic =
     currentIndex < allTopics.length - 1 ? allTopics[currentIndex + 1] : null;
 
+  // Quiz questions for this topic
+  const quiz = getQuizForTopic(slug, topic);
+
   // Related codex articles for this domain
   const relatedArticles = getAllCodexArticles()
     .filter((a) => a.domain === slug)
@@ -128,6 +134,10 @@ export default async function TopicContentPage({ params }: PageProps) {
             contentSlug={topic}
             domainSlug={slug}
           />
+
+          {/* Quiz */}
+          {quiz && <TopicQuiz questions={quiz.questions} />}
+
           <SignInCallout />
 
           {/* Related Codex Articles */}
@@ -192,6 +202,13 @@ export default async function TopicContentPage({ params }: PageProps) {
 
         <TableOfContents headings={headings} />
       </div>
+
+      {/* Floating Notes Drawer — accessible from anywhere on the page */}
+      <TopicNotes
+        contentType="topic"
+        contentSlug={topic}
+        domainSlug={slug}
+      />
     </>
   );
 }

@@ -6,15 +6,9 @@
 }
 
 .header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
-  margin-bottom: var(--space-8);
-}
-
-.headerLeft {
-  flex: 1;
+  text-align: center;
+  max-width: 520px;
+  margin: 0 auto var(--space-10);
 }
 
 .sectionLabel {
@@ -31,60 +25,10 @@
   font-family: var(--font-body);
   font-size: 1rem;
   color: var(--text-secondary);
-  max-width: 480px;
-}
-
-.viewToggle {
-  display: flex;
-  gap: var(--space-1);
-  padding-top: var(--space-1);
-}
-
-.toggleBtn {
-  font-family: var(--font-ui);
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--text-tertiary);
-  padding: var(--space-1) var(--space-3);
-  border: 1px solid var(--border-ghost);
-  border-radius: var(--radius-md);
-  background: transparent;
-  cursor: pointer;
-  transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
-}
-
-.toggleBtn:hover {
-  color: var(--text-primary);
-  border-color: var(--border-subtle);
-}
-
-.toggleBtnActive {
-  composes: toggleBtn;
-  color: var(--ghost-white);
-  background: rgba(167, 139, 250, 0.12);
-  border-color: var(--spectral-1);
-}
-
-/* ---- Graph Container ---- */
-.graphWrap {
-  width: 100%;
-  height: 600px;
-  background: var(--deep);
-  border: 1px solid var(--border-ghost);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  position: relative;
-}
-
-/* ---- List View ---- */
-.listView {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
 }
 
 @media (max-width: 767px) {
-  .header {
-    flex-direction: column;
+  .page {
+    padding: var(--space-6) var(--space-4) var(--space-16);
   }
 }

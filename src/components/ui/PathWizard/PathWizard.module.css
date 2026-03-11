@@ -1,0 +1,556 @@
+/* ── Wizard Container ─────────────────────────── */
+.wizard {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+/* ── Progress Indicator ──────────────────────── */
+.progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin-bottom: var(--space-10);
+}
+
+.progressStep {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.progressDot {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: all 200ms ease;
+  flex-shrink: 0;
+}
+
+.progressActive .progressDot {
+  border-color: var(--spectral-1);
+  color: var(--spectral-1);
+  background: rgba(167, 139, 250, 0.1);
+}
+
+.progressDone .progressDot {
+  border-color: var(--spectral-3);
+  color: var(--spectral-3);
+  background: rgba(52, 211, 153, 0.1);
+}
+
+.progressLabel {
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  transition: color 200ms ease;
+}
+
+.progressActive .progressLabel {
+  color: var(--ghost-white);
+}
+
+.progressDone .progressLabel {
+  color: var(--spectral-3);
+}
+
+.progressLine {
+  display: block;
+  width: 48px;
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 0 var(--space-2);
+  flex-shrink: 0;
+}
+
+/* ── Step Content ────────────────────────────── */
+.stepContent {
+  animation: fadeUp 250ms ease;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stepTitle {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  color: var(--ghost-white);
+  margin: 0 0 var(--space-2);
+}
+
+.stepSubtitle {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-6);
+}
+
+/* ── Goal Grid ───────────────────────────────── */
+.goalGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+}
+
+.goalCard {
+  text-align: left;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-ghost);
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.goalCard:hover {
+  border-color: var(--border-subtle);
+  background: var(--surface-raised);
+}
+
+.goalCardActive {
+  border-color: var(--spectral-1);
+  background: rgba(167, 139, 250, 0.06);
+}
+
+.goalCardActive:hover {
+  border-color: var(--spectral-1);
+  background: rgba(167, 139, 250, 0.1);
+}
+
+.goalLabel {
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ghost-white);
+  margin-bottom: var(--space-1);
+}
+
+.goalCardActive .goalLabel {
+  color: var(--spectral-1);
+}
+
+.goalDesc {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* ── Time Grid ───────────────────────────────── */
+.timeGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+}
+
+.timeCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-ghost);
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.timeCard:hover {
+  border-color: var(--border-subtle);
+  background: var(--surface-raised);
+}
+
+.timeCardActive {
+  border-color: var(--spectral-1);
+  background: rgba(167, 139, 250, 0.06);
+}
+
+.timeIcon {
+  color: var(--text-muted);
+  transition: color 150ms ease;
+}
+
+.timeCardActive .timeIcon {
+  color: var(--spectral-1);
+}
+
+.timeLabel {
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.timeCardActive .timeLabel {
+  color: var(--ghost-white);
+}
+
+/* ── Depth Grid ──────────────────────────────── */
+.depthGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+}
+
+.depthCard {
+  text-align: left;
+  padding: var(--space-5) var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-ghost);
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.depthCard:hover {
+  border-color: var(--border-subtle);
+  background: var(--surface-raised);
+}
+
+.depthCardActive {
+  border-color: var(--spectral-1);
+  background: rgba(167, 139, 250, 0.06);
+}
+
+.depthLabel {
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ghost-white);
+  margin-bottom: var(--space-1);
+}
+
+.depthCardActive .depthLabel {
+  color: var(--spectral-1);
+}
+
+.depthDesc {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* ── Navigation ──────────────────────────────── */
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-8);
+}
+
+.navBack {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  transition: color 150ms ease;
+}
+
+.navBack:hover {
+  color: var(--ghost-white);
+}
+
+.navNext {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ghost-white);
+  background: var(--spectral-1);
+  border: none;
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-5);
+  cursor: pointer;
+  transition: opacity 150ms ease;
+}
+
+.navNext:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.navNext:not(:disabled):hover {
+  opacity: 0.85;
+}
+
+/* ── Result ──────────────────────────────────── */
+.result {
+  animation: fadeUp 300ms ease;
+}
+
+.resultHeader {
+  text-align: center;
+  margin-bottom: var(--space-8);
+}
+
+.resultTitle {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  color: var(--ghost-white);
+  margin: 0 0 var(--space-3);
+}
+
+.resultMeta {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: var(--space-2);
+}
+
+.resultTag {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--spectral-1);
+  background: rgba(167, 139, 250, 0.1);
+  border: 1px solid rgba(167, 139, 250, 0.2);
+  border-radius: var(--radius-full);
+  padding: var(--space-1) var(--space-3);
+}
+
+.resultEstimate {
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+/* ── Result Domain List ──────────────────────── */
+.resultDomains {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-6);
+}
+
+.resultDomainRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.resultDomainIndex {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.resultDomainCard {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-ghost);
+  background: var(--surface);
+  text-decoration: none;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.resultDomainCard:hover {
+  border-color: var(--border-subtle);
+  background: var(--surface-raised);
+}
+
+.resultDomainIcon {
+  color: var(--spectral-1);
+  display: flex;
+  flex-shrink: 0;
+}
+
+.resultDomainInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.resultDomainName {
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ghost-white);
+}
+
+.resultDomainDesc {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.resultDomainArrow {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.resultDomainCard:hover .resultDomainArrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* ── Result Paths ────────────────────────────── */
+.resultPaths {
+  border-top: 1px solid var(--border-ghost);
+  padding-top: var(--space-5);
+  margin-bottom: var(--space-6);
+}
+
+.resultPathsLabel {
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: var(--space-3);
+}
+
+.resultPathItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) 0;
+}
+
+.resultPathName {
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.resultPathDesc {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* ── Reset Button ────────────────────────────── */
+.resetBtn {
+  display: block;
+  margin: 0 auto;
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border-ghost);
+  border-radius: var(--radius-md);
+  padding: var(--space-2) var(--space-5);
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease;
+}
+
+.resetBtn:hover {
+  color: var(--ghost-white);
+  border-color: var(--border-subtle);
+}
+
+/* ── Loading Skeleton ─────────────────────────── */
+.loadingSkeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-6) 0;
+}
+
+.skeletonBar {
+  width: 240px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  animation: shimmer 1.5s infinite;
+  margin: 0 auto;
+}
+
+.skeletonTitle {
+  width: 320px;
+  height: 24px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  animation: shimmer 1.5s infinite;
+  animation-delay: 100ms;
+}
+
+.skeletonGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+}
+
+.skeletonCard {
+  height: 80px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  animation: shimmer 1.5s infinite;
+  animation-delay: 200ms;
+}
+
+@keyframes shimmer {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+/* ── Responsive ──────────────────────────────── */
+@media (max-width: 639px) {
+  .goalGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .timeGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .depthGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .progressLine {
+    width: 24px;
+  }
+
+  .resultDomainDesc {
+    display: none;
+  }
+}

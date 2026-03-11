@@ -1,0 +1,234 @@
+/* ============================================================
+   TopicNotes — Floating Drawer
+   Accessible from anywhere on the page via a sticky FAB
+   ============================================================ */
+
+/* ---- Floating Action Button ---- */
+.fab {
+  position: fixed;
+  bottom: var(--space-8);
+  right: var(--space-8);
+  z-index: 1000;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 1px solid var(--border-ghost);
+  background: var(--surface-raised);
+  color: var(--spectral-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  transition: transform 0.2s ease, background 0.2s ease,
+    opacity 0.2s ease, box-shadow 0.2s ease;
+}
+
+.fab:hover {
+  background: var(--surface);
+  transform: scale(1.08);
+  box-shadow: 0 4px 28px rgba(0, 0, 0, 0.5),
+    0 0 0 1px var(--spectral-1);
+}
+
+.fabHidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.8);
+}
+
+/* ---- Backdrop ---- */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  background: rgba(0, 0, 0, 0.5);
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ---- Slide-out Drawer ---- */
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 1200;
+  width: 380px;
+  max-width: 90vw;
+  height: 100vh;
+  background: var(--abyss);
+  border-left: 1px solid var(--border-ghost);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.drawerOpen {
+  transform: translateX(0);
+}
+
+/* ---- Drawer Header ---- */
+.drawerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-5) var(--space-5);
+  border-bottom: 1px solid var(--border-ghost);
+  flex-shrink: 0;
+}
+
+.drawerTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.closeBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.closeBtn:hover {
+  background: var(--surface-raised);
+  color: var(--text-primary);
+}
+
+/* ---- Drawer Body ---- */
+.drawerBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-5);
+  overflow-y: auto;
+}
+
+/* ---- Textarea ---- */
+.textarea {
+  flex: 1;
+  width: 100%;
+  min-height: 200px;
+  padding: var(--space-4);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1.7;
+  color: var(--text-primary);
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  resize: none;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.textarea::placeholder {
+  color: var(--text-tertiary);
+}
+
+.textarea:focus {
+  border-color: var(--spectral-1);
+}
+
+/* ---- Footer (save status + char count) ---- */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-3);
+  min-height: 1.5rem;
+  flex-shrink: 0;
+}
+
+.saveStatus {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+.saved {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--spectral-3);
+}
+
+.charCount {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-tertiary);
+}
+
+/* ---- Loading skeleton ---- */
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+}
+
+.skeletonLine,
+.skeletonLineShort {
+  height: 12px;
+  border-radius: var(--radius-md);
+  background: var(--border-ghost);
+  animation: shimmer 1.5s ease infinite;
+}
+
+.skeletonLine {
+  width: 100%;
+}
+
+.skeletonLineShort {
+  width: 60%;
+}
+
+@keyframes shimmer {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 640px) {
+  .fab {
+    bottom: var(--space-5);
+    right: var(--space-5);
+    width: 46px;
+    height: 46px;
+  }
+
+  .drawer {
+    width: 100vw;
+    max-width: 100vw;
+  }
+
+  .textarea {
+    font-size: 0.8125rem;
+  }
+}

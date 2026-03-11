@@ -6,7 +6,7 @@ import styles from "./paths.module.css";
 export const metadata: Metadata = {
   title: "Learning Paths",
   description:
-    "Curated learning paths through 14 knowledge domains — visualized as an interactive constellation graph.",
+    "Build a tailored learning path based on your goals, schedule, and depth preference.",
 };
 
 export default function PathsPage() {

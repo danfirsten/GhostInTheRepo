@@ -1,0 +1,243 @@
+/* ---- Section wrapper ---- */
+.section {
+  margin-top: var(--space-12);
+  padding-top: var(--space-10);
+  border-top: 1px solid var(--border-ghost);
+}
+
+/* ---- Section heading ---- */
+.heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--spectral-1);
+  margin-bottom: var(--space-8);
+}
+
+.headingIcon {
+  display: flex;
+  font-size: 1.15rem;
+}
+
+/* ---- Question card ---- */
+.questionCard {
+  background: var(--surface);
+  border: 1px solid var(--border-ghost);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  margin-bottom: var(--space-6);
+  transition: border-color 0.25s ease;
+}
+
+.questionCard:hover {
+  border-color: var(--border-subtle);
+}
+
+.questionNumber {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-tertiary);
+  letter-spacing: 0.06em;
+  margin-bottom: var(--space-2);
+}
+
+.questionText {
+  font-family: var(--font-body);
+  font-size: var(--text-body-md);
+  color: var(--text-primary);
+  line-height: 1.65;
+  margin-bottom: var(--space-5);
+}
+
+/* ---- Options list ---- */
+.optionsList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* ---- Option button ---- */
+.option {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-ghost);
+  border-left: 3px solid transparent;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 0.925rem;
+  line-height: 1.55;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.option:hover:not(:disabled) {
+  background: rgba(167, 139, 250, 0.06);
+  border-color: var(--border-subtle);
+  color: var(--text-primary);
+}
+
+.option:disabled {
+  cursor: default;
+}
+
+.optionLabel {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  min-width: 1.25rem;
+  padding-top: 0.1em;
+  transition: color 0.2s ease;
+}
+
+/* ---- Answer states ---- */
+.correct {
+  background: rgba(52, 211, 153, 0.08);
+  border-left-color: var(--spectral-3);
+  border-color: rgba(52, 211, 153, 0.2);
+  color: var(--text-primary);
+}
+
+.correct .optionLabel {
+  color: var(--spectral-3);
+}
+
+.wrong {
+  background: rgba(244, 114, 182, 0.08);
+  border-left-color: var(--spectral-4);
+  border-color: rgba(244, 114, 182, 0.2);
+  color: var(--text-primary);
+}
+
+.wrong .optionLabel {
+  color: var(--spectral-4);
+}
+
+.dimmed {
+  opacity: 0.4;
+}
+
+/* ---- Result icon ---- */
+.resultIcon {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 1.1rem;
+  padding-top: 0.1em;
+}
+
+.resultIconCorrect {
+  composes: resultIcon;
+  color: var(--spectral-3);
+}
+
+.resultIconWrong {
+  composes: resultIcon;
+  color: var(--spectral-4);
+}
+
+/* ---- Explanation ---- */
+.explanation {
+  margin-top: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  background: rgba(167, 139, 250, 0.04);
+  border-left: 3px solid var(--spectral-1);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  animation: fadeIn 0.35s ease;
+}
+
+.explanationText {
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---- Score counter ---- */
+.scoreBar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+  padding: var(--space-4) var(--space-6);
+  background: var(--surface);
+  border: 1px solid var(--border-ghost);
+  border-radius: var(--radius-lg);
+}
+
+.scoreText {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
+}
+
+.scoreValue {
+  color: var(--spectral-3);
+  font-weight: 600;
+}
+
+.scorePerfect {
+  color: var(--spectral-3);
+}
+
+.scoreIcon {
+  display: flex;
+  font-size: 1.1rem;
+  color: var(--spectral-3);
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 640px) {
+  .section {
+    margin-top: var(--space-10);
+    padding-top: var(--space-8);
+  }
+
+  .questionCard {
+    padding: var(--space-4);
+  }
+
+  .option {
+    padding: var(--space-3);
+  }
+
+  .explanation {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .scoreBar {
+    padding: var(--space-3) var(--space-4);
+  }
+}

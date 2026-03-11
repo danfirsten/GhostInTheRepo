@@ -69,3 +69,23 @@ export interface LearningPath {
   nodes: PathNode[];
   edges: PathEdge[];
 }
+
+export interface ProjectPrerequisite {
+  topicSlug: string;
+  domainSlug: string;
+  title: string;
+}
+
+export interface Project {
+  id: string;
+  title: string;
+  description: string;
+  difficulty: "beginner" | "intermediate" | "advanced";
+  estimatedHours: number;
+  domainSlug: string;
+  topicSlug?: string;
+  prerequisites: ProjectPrerequisite[];
+  skills: string[];
+  tags: string[];
+  llmPrompt: string;
+}

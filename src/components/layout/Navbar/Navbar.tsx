@@ -12,6 +12,7 @@ import type { User } from "@supabase/supabase-js";
 const navLinks = [
   { href: "/topics", label: "Topics" },
   { href: "/paths", label: "Paths" },
+  { href: "/projects", label: "Projects" },
   { href: "/codex", label: "Codex" },
 ];
 
@@ -144,6 +145,9 @@ export function Navbar({ onSearchOpen, user }: NavbarProps) {
               <>
                 <a href="/profile" className={styles.drawerLink}>
                   Profile
+                </a>
+                <a href="/profile/dashboard" className={styles.drawerLink}>
+                  Dashboard
                 </a>
                 <a href="/profile/settings" className={styles.drawerLink}>
                   Settings
