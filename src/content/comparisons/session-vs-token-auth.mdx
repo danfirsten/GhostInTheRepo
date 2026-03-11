@@ -1,0 +1,162 @@
+---
+title: "Session-Based vs Token-Based Authentication"
+sideA: "Session-Based Auth"
+sideB: "Token-Based Auth"
+domains:
+  - "cybersecurity"
+  - "web-development"
+difficulty: "intermediate"
+publishedAt: "2026-03-10"
+summary: "Session auth stores state on the server with a cookie reference; token auth encodes state in a self-contained JWT sent with each request."
+---
+
+After a user logs in, the application needs a way to remember that identity across subsequent requests. The two dominant approaches — session-based and token-based authentication — represent a fundamental architectural trade-off between server-side state and client-side state. Session auth stores the truth on the server and gives the client a reference key. Token auth encodes the truth into a signed token the client carries. Each approach has real consequences for scalability, security, and developer experience.
+
+## Quick Reference
+
+| Aspect | Session-Based | Token-Based (JWT) |
+|---|---|---|
+| **State location** | Server (session store) | Client (token payload) |
+| **Transport** | Cookie (automatic) | `Authorization` header (manual) or cookie |
+| **Scalability** | Requires shared session store across servers | Stateless — any server can verify |
+| **Revocation** | Immediate — delete session from store | Difficult — token valid until expiry |
+| **Payload** | Opaque ID (no user data) | Encoded claims (user ID, roles, expiry) |
+| **CSRF risk** | Yes (cookies sent automatically) | No (if using Authorization header) |
+| **XSS risk** | Lower (httpOnly cookies) | Higher (if stored in localStorage) |
+| **Typical use** | Traditional web apps, server-rendered | SPAs, mobile apps, microservices |
+
+## Session-Based Auth in Depth
+
+Session authentication is the traditional model. When a user logs in, the server creates a session record — typically stored in memory, a database, or Redis — and sends back a session ID in a cookie. On every subsequent request, the browser automatically attaches the cookie, and the server looks up the session to identify the user.
+
+```
+# Session-based login flow
+
+POST /login { email, password }
+  → Server validates credentials
+  → Server creates session: { sid: "abc123", userId: 42, role: "editor" }
+  → Server stores session in Redis/database
+  → Response: Set-Cookie: sid=abc123; HttpOnly; Secure; SameSite=Strict
+
+GET /api/profile
+  → Browser sends Cookie: sid=abc123 (automatic)
+  → Server looks up session "abc123" in store
+  → Finds { userId: 42, role: "editor" }
+  → Returns profile for user 42
+```
+
+The key advantage is **server-side control**. The session store is the single source of truth. To revoke access, delete the session — the user is logged out immediately on the next request. To change permissions, update the session record. There is no stale state floating around on clients.
+
+Session cookies should always be configured with security flags:
+
+```
+Set-Cookie: sid=abc123;
+  HttpOnly;     // not accessible via JavaScript — mitigates XSS
+  Secure;       // only sent over HTTPS
+  SameSite=Lax; // mitigates CSRF for most cases
+  Max-Age=86400 // expires after 24 hours
+```
+
+The main trade-off is **statefulness**. Every request requires a session lookup. If your application runs on multiple servers, they must share the session store (typically Redis). This adds infrastructure complexity and a potential single point of failure.
+
+## Token-Based Auth in Depth
+
+Token-based authentication — most commonly using JSON Web Tokens (JWT) — flips the model. Instead of storing state on the server, the server encodes user claims into a signed token and gives it to the client. The client sends this token with every request, and any server can verify it independently by checking the signature.
+
+A JWT consists of three Base64-encoded parts separated by dots:
+
+```
+# JWT Structure
+header.payload.signature
+
+# Header: algorithm and token type
+{ "alg": "HS256", "typ": "JWT" }
+
+# Payload: claims about the user
+{
+  "sub": "42",
+  "email": "user@example.com",
+  "role": "editor",
+  "iat": 1709856000,
+  "exp": 1709942400
+}
+
+# Signature: HMAC-SHA256(base64(header) + "." + base64(payload), secret)
+```
+
+The server verifies the token by recomputing the signature with its secret key. If it matches, the claims are trusted without any database lookup.
+
+```
+# Token-based login flow
+
+POST /login { email, password }
+  → Server validates credentials
+  → Server creates JWT with user claims, signs with secret
+  → Response: { "accessToken": "eyJhbG...", "refreshToken": "dGhpcy..." }
+
+GET /api/profile
+  → Client sends: Authorization: Bearer eyJhbG...
+  → Server verifies JWT signature
+  → Reads claims directly from token payload
+  → Returns profile for user 42 (no database lookup needed)
+```
+
+The primary advantage is **statelessness**. No session store, no shared state, no Redis dependency. Any server with the signing key can verify any token. This makes horizontal scaling straightforward and is well-suited for microservice architectures where multiple services need to verify identity independently.
+
+## Key Differences
+
+1. **Revocation.** This is the most consequential difference. Sessions can be revoked instantly by deleting the server-side record. JWTs are valid until they expire — there's no built-in way to invalidate them early. Workarounds exist (token blocklists, short expiry + refresh tokens) but they reintroduce server-side state, partially negating the stateless benefit.
+
+2. **Scaling model.** Session auth requires all servers to access the same session store. Token auth lets each server independently verify tokens using only the signing key. For architectures with many services, load balancers, or edge computing, tokens reduce infrastructure coupling.
+
+3. **Payload transparency.** Session IDs are opaque — they reveal nothing about the user. JWT payloads are Base64-encoded (not encrypted), meaning anyone can read the claims. Never put sensitive data in a JWT unless you also encrypt it (JWE). The signature prevents tampering but not reading.
+
+4. **Transport and CSRF.** Cookies are sent automatically by the browser on every request to the domain, which enables CSRF attacks. Tokens stored in memory or localStorage and sent via the `Authorization` header are immune to CSRF because the browser doesn't attach them automatically. However, localStorage is accessible to JavaScript, making tokens vulnerable to XSS. The safest option for browser apps is storing tokens in httpOnly cookies with SameSite protection.
+
+5. **Size and bandwidth.** A session cookie is tiny — just an ID string. A JWT carrying multiple claims can be 800+ bytes, sent on every request. For high-frequency API calls, this overhead adds up.
+
+## When to Use Which
+
+**Choose session-based auth when:**
+- You have a monolithic server-rendered web application
+- Instant revocation is important (e.g., "log out all devices" must work immediately)
+- You're already running Redis or a similar store
+- Your app is not consumed by third-party services or mobile clients
+
+**Choose token-based auth when:**
+- You're building an SPA with a separate API backend
+- Multiple services or microservices need to verify identity independently
+- You need to support mobile apps or third-party API consumers
+- You want to minimize server-side state and database lookups
+
+**The hybrid approach** (common in production) uses short-lived JWTs (5–15 minutes) for API access combined with server-stored refresh tokens for renewal:
+
+```
+# Refresh token rotation pattern
+Access token:  JWT, 15 min expiry, stateless verification
+Refresh token: opaque, stored server-side, 7 day expiry
+
+When access token expires:
+  POST /api/refresh { refreshToken: "..." }
+  → Server validates refresh token against database
+  → Issues new access token + rotates refresh token
+  → Old refresh token invalidated (detects theft)
+```
+
+## Common Misconceptions
+
+**"JWTs are encrypted."** JWTs are signed, not encrypted. The payload is Base64-encoded and can be decoded by anyone. Use JWE (JSON Web Encryption) if confidentiality of the payload matters — but in most cases, simply avoid putting sensitive data in the token.
+
+**"Stateless JWT means no database."** You still need a database for user records, passwords, and any mutable state. "Stateless" means the authentication check itself doesn't require a database lookup on every request. If you add a blocklist for revocation, you've reintroduced per-request state.
+
+**"Sessions are outdated."** Sessions remain the right choice for many applications, particularly server-rendered web apps. They're simpler, revocation is trivial, and with Redis, they scale well. The industry shift toward JWTs was driven by SPAs and microservices, not by sessions being inherently flawed.
+
+**"Storing JWTs in localStorage is fine."** Any JavaScript on the page (including injected XSS payloads) can read localStorage. For browser-based apps, httpOnly cookies are safer for token storage. Use the `Authorization` header pattern for non-browser clients like mobile apps.
+
+## Key Takeaways
+
+- Session auth stores state server-side (simple, instant revocation) but requires shared infrastructure. Token auth is stateless (scales easily) but makes revocation difficult.
+- JWTs are signed but not encrypted. Never store sensitive data in the payload without encryption.
+- For browser apps, store tokens in httpOnly cookies to mitigate both XSS and CSRF. Use Authorization headers for mobile and service-to-service communication.
+- The refresh token pattern combines the best of both worlds: short-lived stateless access tokens with server-controlled refresh tokens for revocation.
+- Neither approach is universally better. Choose based on your architecture — monolith with server rendering favors sessions; SPA with microservices favors tokens.

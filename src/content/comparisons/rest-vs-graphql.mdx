@@ -1,0 +1,182 @@
+---
+title: "REST vs GraphQL: API Design Paradigms Compared"
+sideA: "REST"
+sideB: "GraphQL"
+domains:
+  - "web-development"
+  - "databases"
+difficulty: "intermediate"
+publishedAt: "2026-03-10"
+summary: "A practical comparison of REST and GraphQL covering data fetching patterns, caching, type systems, performance tradeoffs, and guidance on when each approach is the better choice."
+---
+
+REST has been the dominant API design paradigm for over two decades. GraphQL, released by Facebook in 2015, challenged many of REST's assumptions by giving clients control over exactly what data they receive. Both approaches have real strengths, and the choice between them depends on your data model, client diversity, and team capabilities — not on which technology is newer.
+
+## Quick Reference
+
+| Aspect | REST | GraphQL |
+|---|---|---|
+| Data fetching | Server defines response shape | Client specifies exact fields needed |
+| Endpoints | Multiple (one per resource) | Single endpoint |
+| Over-fetching | Common (fixed response shapes) | Eliminated (client picks fields) |
+| Under-fetching | Common (requires multiple requests) | Eliminated (nested queries) |
+| Caching | HTTP caching (ETags, Cache-Control) | Requires custom caching (Apollo, Relay) |
+| Type system | OpenAPI/Swagger (optional) | Built-in schema with strong types |
+| Versioning | URL or header versioning | Schema evolution (deprecation) |
+| File uploads | Native multipart support | Requires workarounds or extensions |
+| Real-time | Webhooks, SSE, WebSockets (separate) | Subscriptions (built-in concept) |
+| Learning curve | Low | Moderate to high |
+
+## REST in Depth
+
+REST (Representational State Transfer) was described by Roy Fielding in his 2000 doctoral dissertation. It is not a protocol or specification — it is a set of architectural constraints that leverage HTTP's built-in capabilities.
+
+A well-designed REST API maps resources to URLs and uses HTTP methods to define operations:
+
+```
+GET    /api/users/42           → Fetch user 42
+GET    /api/users/42/posts     → Fetch user 42's posts
+POST   /api/users              → Create a new user
+PUT    /api/users/42           → Replace user 42
+PATCH  /api/users/42           → Partially update user 42
+DELETE /api/users/42           → Delete user 42
+```
+
+**HTTP caching** is REST's superpower. Because each resource has a unique URL, caches at every layer — browser, CDN, reverse proxy — can store and serve responses without hitting your server. Headers like `Cache-Control`, `ETag`, and `Last-Modified` provide fine-grained control:
+
+```
+GET /api/users/42
+Cache-Control: max-age=300, stale-while-revalidate=60
+ETag: "a1b2c3"
+```
+
+This is not a minor advantage. For read-heavy APIs, HTTP caching can reduce server load by orders of magnitude. GraphQL's single-endpoint model makes this kind of caching significantly harder.
+
+**The over-fetching problem** is REST's well-known weakness. When a mobile client only needs a user's name and avatar, but the `/api/users/42` endpoint returns 30 fields including full address and preferences, the client downloads data it discards. REST's mitigation strategies — sparse fieldsets (`?fields=name,avatar`), separate endpoints for different clients — add complexity.
+
+**The under-fetching problem** is equally painful. Rendering a blog post with author info and comments requires three requests:
+
+```
+GET /api/posts/1           → post data
+GET /api/users/7           → author data
+GET /api/posts/1/comments  → comments
+```
+
+Each request adds network latency. REST's solution — embedding related resources or creating aggregate endpoints — erodes the clean resource model.
+
+## GraphQL in Depth
+
+GraphQL is a query language for APIs with a strongly-typed schema. Clients describe the exact data they need, and the server returns precisely that — no more, no less.
+
+```graphql
+# One request replaces three REST calls
+query {
+  post(id: 1) {
+    title
+    body
+    publishedAt
+    author {
+      name
+      avatarUrl
+    }
+    comments(first: 10) {
+      body
+      createdAt
+      author {
+        name
+      }
+    }
+  }
+}
+```
+
+**The type system** is GraphQL's foundation. Every API is defined by a schema that specifies types, fields, arguments, and relationships. This schema serves as a contract between client and server, enables automatic documentation, and powers developer tools like autocompletion and validation.
+
+```graphql
+type Post {
+  id: ID!
+  title: String!
+  body: String!
+  publishedAt: DateTime!
+  author: User!
+  comments(first: Int, after: String): CommentConnection!
+}
+
+type User {
+  id: ID!
+  name: String!
+  avatarUrl: String
+  posts: [Post!]!
+}
+```
+
+**Schema evolution** replaces versioning. Instead of `/api/v2/users`, you deprecate fields and add new ones. Clients that still reference deprecated fields continue to work, while new clients use the updated schema. Tooling can detect usage of deprecated fields and guide migration.
+
+**The N+1 problem** is GraphQL's most notorious challenge. When resolving a list of posts, a naive implementation fetches the author for each post individually — one query for the posts, then N queries for N authors. The standard solution is **DataLoader**, which batches and deduplicates database calls:
+
+```javascript
+// Without DataLoader: N+1 queries
+// Post 1 → SELECT * FROM users WHERE id = 7
+// Post 2 → SELECT * FROM users WHERE id = 7  (duplicate!)
+// Post 3 → SELECT * FROM users WHERE id = 12
+
+// With DataLoader: 1 batched query
+// SELECT * FROM users WHERE id IN (7, 12)
+const userLoader = new DataLoader(async (ids) => {
+  const users = await db.query('SELECT * FROM users WHERE id = ANY($1)', [ids]);
+  return ids.map(id => users.find(u => u.id === id));
+});
+```
+
+**Caching** requires dedicated infrastructure. Since all requests go to `POST /graphql`, HTTP caches cannot differentiate between them. Client-side caching libraries like Apollo Client and Relay maintain normalized caches keyed by type and ID, which are powerful but add complexity. Persisted queries (where clients send a hash instead of the full query) enable CDN caching but require a build step.
+
+## Key Differences
+
+1. **Client control vs server control.** REST servers decide what data to return. GraphQL clients decide. This makes GraphQL ideal for diverse clients (mobile, web, third-party) with different data needs, but gives the server less control over query complexity and cost.
+
+2. **Caching architecture.** REST gets HTTP caching for free. GraphQL requires purpose-built caching at the client (Apollo, Relay), server (persisted queries, response caching), or both. For read-heavy public APIs, REST's caching advantage is substantial.
+
+3. **Error handling.** REST uses HTTP status codes (404, 422, 500) with established semantics. GraphQL always returns 200 OK with errors in the response body, which complicates monitoring, alerting, and debugging with standard HTTP tools.
+
+4. **Security surface.** REST endpoints have predictable cost — you know how expensive `GET /api/users` is. GraphQL queries can be arbitrarily deep and expensive. Without query complexity analysis, depth limiting, and rate limiting by query cost, a single malicious query can overwhelm your server.
+
+5. **Tooling maturity.** REST has decades of tooling: Postman, curl, OpenAPI generators, API gateways, load balancers with URL-based routing. GraphQL tooling (GraphiQL, Apollo Studio, Relay compiler) is excellent but younger and more specialized.
+
+6. **File handling.** REST handles file uploads natively via multipart/form-data. GraphQL has no built-in file upload mechanism — the common workaround is the GraphQL multipart request spec or using a separate REST endpoint for uploads.
+
+## When to Use Which
+
+**Choose REST when:**
+- Your API is resource-oriented with straightforward CRUD operations
+- HTTP caching is critical to your performance requirements
+- You need a public API with broad client compatibility
+- Your team is experienced with REST and does not have GraphQL expertise
+- File uploads are a primary use case
+- You want standard HTTP monitoring and debugging tools to work out of the box
+
+**Choose GraphQL when:**
+- Multiple clients (mobile, web, TV, third-party) need different data shapes from the same backend
+- Your data model is deeply relational and clients frequently need nested data
+- Over-fetching is causing measurable performance problems (especially on mobile)
+- You want a strongly-typed, self-documenting API contract
+- Rapid frontend iteration is a priority and backend teams are a bottleneck for new endpoints
+- You are building a backend-for-frontend (BFF) that aggregates multiple services
+
+## Common Misconceptions
+
+**"GraphQL is faster than REST."** GraphQL can reduce total bytes transferred and eliminate waterfall requests, but each GraphQL query may trigger more complex server-side processing. A well-designed REST API with HTTP caching often outperforms a GraphQL API for common read paths.
+
+**"REST is obsolete."** REST remains the right choice for most APIs. GitHub, Stripe, and Twilio offer excellent REST APIs. GitHub also offers GraphQL — but their REST API is not going away. REST's simplicity, caching, and tooling maturity are genuine advantages.
+
+**"GraphQL eliminates the need for API versioning."** Schema evolution reduces the need for versioning, but breaking changes (removing fields, changing types) still require coordination. Deprecation annotations and usage tracking help, but they do not eliminate the problem.
+
+**"You cannot solve over-fetching in REST."** Sparse fieldsets (`?fields=name,email`), JSON:API, and OData all address over-fetching in REST. They are less elegant than GraphQL's approach, but they work without adopting an entirely new paradigm.
+
+**"GraphQL replaces your database layer."** GraphQL is an API layer, not a database query language. Every GraphQL field is resolved by server-side code that can call databases, other APIs, or any data source. You still need to write efficient data access logic.
+
+## Key Takeaways
+
+- REST excels at resource-oriented APIs with strong HTTP caching, broad compatibility, and operational simplicity. It is the safer default for most APIs.
+- GraphQL excels when multiple clients with different data needs consume the same backend, when data is deeply nested, or when frontend teams need to iterate without waiting for backend changes.
+- Caching is the biggest practical difference. If your API is read-heavy and performance-sensitive, REST's HTTP caching is a major advantage. If your API serves diverse clients with varying data needs, GraphQL's precision fetching wins.
+- Both can coexist in the same system. Use REST for public APIs and webhook integrations. Use GraphQL for your internal frontend-to-backend communication. There is no rule that says you must pick one.

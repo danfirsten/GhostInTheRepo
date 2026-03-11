@@ -1,0 +1,157 @@
+---
+title: "ACID vs BASE: Database Consistency Models Explained"
+sideA: "ACID"
+sideB: "BASE"
+domains:
+  - "databases"
+difficulty: "intermediate"
+publishedAt: "2026-03-10"
+summary: "A deep dive into ACID and BASE consistency models, their connection to the CAP theorem, and how to choose the right consistency guarantees for distributed systems."
+---
+
+ACID and BASE are not competing standards — they are opposite ends of a consistency spectrum. ACID prioritizes correctness at the cost of availability and latency. BASE prioritizes availability and performance at the cost of immediate consistency. Every database system makes tradeoffs along this spectrum, and understanding those tradeoffs is essential for building systems that behave correctly under load and failure.
+
+## Quick Reference
+
+| Property | ACID | BASE |
+|---|---|---|
+| Full name | Atomicity, Consistency, Isolation, Durability | Basically Available, Soft state, Eventually consistent |
+| Priority | Correctness first | Availability first |
+| Consistency | Strong (immediate) | Eventual (converges over time) |
+| Transactions | Multi-operation atomic units | Single-operation or best-effort |
+| Typical systems | PostgreSQL, MySQL, SQL Server, Oracle | Cassandra, DynamoDB, CouchDB, Riak |
+| CAP alignment | CP (Consistency + Partition tolerance) | AP (Availability + Partition tolerance) |
+| Best for | Financial systems, inventory, bookings | Social feeds, analytics, IoT telemetry |
+
+## ACID in Depth
+
+ACID is a set of four guarantees that together ensure database transactions are reliable. The acronym was coined by Andreas Reuter and Theo Harder in 1983, but the principles go back to the earliest relational systems.
+
+**Atomicity** means a transaction is all-or-nothing. If a transaction consists of five operations and the fourth fails, the first three are rolled back. The database never reflects a partial transaction.
+
+```sql
+-- Atomicity: bank transfer (both succeed or neither does)
+BEGIN;
+  UPDATE accounts SET balance = balance - 500 WHERE id = 1;
+  UPDATE accounts SET balance = balance + 500 WHERE id = 2;
+  -- If either UPDATE fails, both are rolled back
+COMMIT;
+```
+
+**Consistency** means a transaction transitions the database from one valid state to another. If a constraint says account balances must be non-negative, no committed transaction can violate that constraint. This is not the same "consistency" as in the CAP theorem — ACID consistency refers to application-level invariants enforced by the database.
+
+**Isolation** means concurrent transactions do not interfere with each other. The SQL standard defines four isolation levels, each trading strictness for performance:
+
+| Level | Dirty Read | Non-Repeatable Read | Phantom Read |
+|---|---|---|---|
+| Read Uncommitted | Possible | Possible | Possible |
+| Read Committed | Prevented | Possible | Possible |
+| Repeatable Read | Prevented | Prevented | Possible |
+| Serializable | Prevented | Prevented | Prevented |
+
+PostgreSQL defaults to Read Committed. MySQL/InnoDB defaults to Repeatable Read. Serializable provides the strongest guarantees but incurs the highest overhead due to conflict detection.
+
+**Durability** means committed data survives system crashes. This is implemented through write-ahead logging (WAL) — changes are written to a durable log before being applied to data files. Even if the server loses power mid-write, the WAL enables full recovery on restart.
+
+The cost of ACID is **coordination overhead**. Locks, WAL flushes, and conflict detection add latency. In distributed systems, achieving ACID across multiple nodes requires consensus protocols like two-phase commit (2PC) or Paxos/Raft, which multiply that latency and reduce availability during network partitions.
+
+## BASE in Depth
+
+BASE is not a formal specification like ACID — it is a description of the tradeoffs made by systems that prioritize availability over immediate consistency. The acronym was popularized by Dan Pritchett (eBay) in 2008.
+
+**Basically Available** means the system always responds to requests, even during partial failures. If some replicas are unreachable, the remaining replicas still serve reads and accept writes. The response may not reflect the absolute latest data, but the system does not return an error.
+
+**Soft state** means the system's state may change over time even without new input, as updates propagate asynchronously between replicas. A read from replica A and a read from replica B may return different values for the same key until propagation completes.
+
+**Eventually consistent** means that if no new writes occur, all replicas will converge to the same value after some period of time. The convergence window varies from milliseconds (well-connected data centers) to seconds (cross-region replication).
+
+```python
+# Eventual consistency in practice: reading your own write
+# Write to primary
+cassandra.execute("INSERT INTO posts (id, body) VALUES (uuid(), 'Hello')")
+
+# Immediate read from a replica might miss the write
+posts = cassandra.execute("SELECT * FROM posts")  # might not include 'Hello'
+
+# Solution: use LOCAL_QUORUM consistency for critical reads
+posts = cassandra.execute(
+    SimpleStatement("SELECT * FROM posts", consistency_level=ConsistencyLevel.LOCAL_QUORUM)
+)
+```
+
+BASE systems often provide **tunable consistency**. Cassandra, for example, lets you choose per-query consistency levels: ONE (fastest, least consistent), QUORUM (majority of replicas must agree), ALL (strongest, slowest). This means BASE systems can approach ACID-like behavior for specific operations while remaining available for others.
+
+## The CAP Theorem Connection
+
+The CAP theorem (Eric Brewer, 2000) states that a distributed data store can provide at most two of three guarantees simultaneously:
+
+- **Consistency**: Every read receives the most recent write
+- **Availability**: Every request receives a non-error response
+- **Partition tolerance**: The system continues to operate despite network partitions
+
+Since network partitions are inevitable in distributed systems, the practical choice is between **CP** (consistent but may be unavailable during partitions) and **AP** (available but may return stale data during partitions).
+
+ACID systems are typically CP — they refuse operations they cannot guarantee are consistent. BASE systems are typically AP — they accept operations and reconcile inconsistencies after the partition heals.
+
+```
+                    Consistency
+                       /\
+                      /  \
+                     /    \
+                    / CP   \
+                   / (ACID) \
+                  /          \
+                 /            \
+                /______________\
+     Availability ----------- Partition Tolerance
+          AP (BASE)
+```
+
+It is important to note that CAP consistency and ACID consistency are different concepts. CAP consistency is about all nodes seeing the same data simultaneously. ACID consistency is about application invariants being maintained.
+
+## Key Differences
+
+1. **Failure behavior.** ACID systems reject operations they cannot guarantee. If a database node is unreachable, the transaction fails. BASE systems accept operations optimistically and resolve conflicts later.
+
+2. **Latency profile.** ACID transactions require coordination (locks, consensus, WAL flushes), adding latency proportional to the number of nodes involved. BASE operations complete as soon as a single node acknowledges, with reconciliation happening asynchronously.
+
+3. **Conflict resolution.** ACID prevents conflicts through isolation (locks or MVCC). BASE accepts that conflicts will occur and resolves them through last-write-wins, vector clocks, CRDTs (Conflict-free Replicated Data Types), or application-level merge logic.
+
+4. **Scalability ceiling.** ACID's coordination requirements create a scalability bottleneck — adding nodes increases coordination overhead. BASE systems scale linearly because nodes operate independently for most operations.
+
+5. **Developer burden.** ACID systems handle correctness at the database level — developers write transactions and the database guarantees invariants. BASE systems push correctness responsibility to application code — developers must handle stale reads, conflict resolution, and idempotency.
+
+## When to Use Which
+
+**Choose ACID when:**
+- Financial transactions (double-spend prevention, balance integrity)
+- Inventory management (overselling prevention)
+- Booking systems (double-booking prevention)
+- Any domain where incorrect data is worse than unavailable data
+- Regulatory compliance requires provable data integrity
+
+**Choose BASE when:**
+- Social media feeds (showing a post 2 seconds late is acceptable)
+- Analytics and event ingestion (eventual accuracy is sufficient)
+- IoT sensor data (high write throughput, eventual aggregation)
+- Shopping carts (availability matters more than instant consistency)
+- DNS, CDN, and any globally distributed read-heavy system
+
+**Hybrid approaches** are common. Use ACID for the payment transaction and BASE for the order status notification. Use a strongly consistent primary database with an eventually consistent read replica or cache. Stripe, for example, uses strong consistency for payment processing and eventual consistency for dashboard reporting.
+
+## Common Misconceptions
+
+**"BASE means your data is unreliable."** Eventual consistency does not mean incorrect consistency. It means there is a window — often measured in milliseconds — during which replicas may disagree. For most use cases, this window is invisible to users.
+
+**"ACID means slow."** A single-node PostgreSQL instance processes thousands of ACID transactions per second with sub-millisecond latency. ACID becomes expensive in distributed multi-node transactions, not in single-node operation.
+
+**"You have to choose one model for your entire system."** Most production architectures use both. The payment service uses ACID. The activity feed uses BASE. The recommendation engine uses BASE. Choosing the consistency model per service or per operation is standard practice.
+
+**"Eventual consistency means data can be lost."** Eventual consistency is about when replicas agree, not whether data is durable. A write to Cassandra with replication factor 3 is stored on three nodes — it will not be lost even if one node fails. The "eventual" part is about when all readers see the new value.
+
+## Key Takeaways
+
+- ACID guarantees correctness through atomicity, consistency, isolation, and durability. It is non-negotiable for operations where incorrect state causes real harm (money, inventory, bookings).
+- BASE trades immediate consistency for availability and performance. It is the right choice for workloads where temporary staleness is acceptable and availability is paramount.
+- The CAP theorem means distributed systems must choose between consistency and availability during network partitions. ACID systems choose consistency (CP). BASE systems choose availability (AP).
+- Most real-world systems are hybrid: ACID for critical paths, BASE for everything else. The skill is knowing which operations require which guarantees.

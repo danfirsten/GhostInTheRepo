@@ -1,0 +1,180 @@
+---
+title: "HTTP/2 vs HTTP/3: TCP Multiplexing vs QUIC Transport"
+sideA: "HTTP/2"
+sideB: "HTTP/3"
+domains:
+  - "networking"
+  - "web-development"
+difficulty: "advanced"
+publishedAt: "2026-03-10"
+summary: "HTTP/2 multiplexes streams over TCP but suffers from head-of-line blocking at the transport layer; HTTP/3 replaces TCP with QUIC to eliminate this bottleneck and enable connection migration."
+---
+
+HTTP/2 was a major leap from HTTP/1.1 — binary framing, multiplexed streams, header compression, and server push over a single TCP connection. But it inherited TCP's fundamental limitation: a single lost packet blocks every stream on the connection. HTTP/3 addresses this by replacing TCP entirely with QUIC, a UDP-based transport that gives each stream independent loss recovery. This is not an incremental improvement — it is a change of transport protocol, and it has far-reaching implications for performance, connection management, and how we think about the network stack.
+
+## Quick Reference
+
+| Feature | HTTP/2 | HTTP/3 |
+|---|---|---|
+| **Transport** | TCP + TLS 1.2/1.3 | QUIC (UDP + built-in TLS 1.3) |
+| **Head-of-line blocking** | At TCP layer (all streams blocked) | Per-stream only |
+| **Connection setup** | TCP handshake + TLS handshake (1-2 RTT) | 0-RTT or 1-RTT (combined in QUIC) |
+| **Multiplexing** | Multiple streams over one TCP connection | Multiple independent streams over QUIC |
+| **Connection migration** | No (tied to TCP 4-tuple) | Yes (connection ID survives IP changes) |
+| **Header compression** | HPACK | QPACK |
+| **Server push** | Supported (rarely used in practice) | Deprecated in most implementations |
+| **Loss recovery** | TCP retransmission (all streams stall) | Per-stream retransmission |
+| **Middlebox compatibility** | Good (TCP is well-understood) | Challenging (UDP often throttled/blocked) |
+| **Adoption** | ~36% of all websites | ~31% of all websites (2026) |
+
+## HTTP/2 in Depth
+
+HTTP/2, standardized in 2015, solved HTTP/1.1's biggest problem: the inability to efficiently multiplex requests over a single connection. In HTTP/1.1, browsers opened 6-8 parallel TCP connections per origin and could only have one outstanding request per connection. HTTP/2 introduced binary framing that multiplexes many requests and responses as interleaved streams over a single TCP connection.
+
+### Binary framing and streams
+
+HTTP/2 breaks communication into frames — small binary messages that belong to numbered streams. Multiple streams are interleaved on the same connection:
+
+```
+HTTP/1.1 (sequential):
+Connection 1: [Request A][   wait   ][Response A]
+Connection 2: [Request B][   wait   ][Response B]
+Connection 3: [Request C][   wait   ][Response C]
+
+HTTP/2 (multiplexed on one connection):
+Connection:   [A-hdr][B-hdr][C-hdr][A-data][B-data][C-data]
+              ← frames from different streams interleaved →
+```
+
+This eliminated the need for HTTP/1.1 workarounds like domain sharding, sprite sheets, and CSS/JS concatenation.
+
+### HPACK header compression
+
+HTTP headers are repetitive — the same cookies, user-agent, and accept headers are sent with every request. HPACK uses a dynamic table shared between client and server to encode previously seen headers as small integer indices. This typically reduces header overhead by 85-95% compared to HTTP/1.1.
+
+### The TCP problem
+
+Despite multiplexing at the HTTP layer, all streams share a single TCP byte stream underneath. TCP guarantees in-order delivery of that byte stream. If a single TCP segment is lost, TCP stalls the entire connection until it is retransmitted and received — even if the lost segment belongs to Stream 3 and Streams 1, 2, 4, and 5 have all their data ready.
+
+```
+Stream 1: [data][data][✓ complete]     ← blocked waiting for Stream 3's lost packet
+Stream 2: [data][data][✓ complete]     ← blocked
+Stream 3: [data][✗ LOST][...]          ← triggers TCP retransmit
+Stream 4: [data][data][data]           ← blocked
+```
+
+This is **head-of-line (HoL) blocking** at the transport layer, and it negates much of HTTP/2's multiplexing benefit on lossy networks. Research has shown that on networks with 2% or higher packet loss, HTTP/2 can actually perform worse than HTTP/1.1 with multiple connections, because HTTP/1.1 at least isolates loss to individual connections.
+
+## HTTP/3 in Depth
+
+HTTP/3, standardized as RFC 9114 in 2022, makes a radical change: it replaces TCP with **QUIC** (RFC 9000), a transport protocol built on UDP that integrates TLS 1.3 encryption and provides independent stream multiplexing at the transport layer.
+
+### QUIC transport
+
+QUIC is not "UDP with reliability bolted on." It is a full transport protocol that happens to use UDP as its substrate to traverse NATs and middleboxes. QUIC provides:
+
+- **Reliable, ordered delivery per stream** — but not between streams. Lost data in Stream 3 does not block Stream 1.
+- **Integrated TLS 1.3** — encryption is not layered on top; it is part of the handshake. There is no unencrypted QUIC.
+- **Connection IDs** — connections are identified by a QUIC-assigned ID, not by the (source IP, source port, dest IP, dest port) tuple.
+
+### Eliminating head-of-line blocking
+
+This is HTTP/3's most significant improvement. Each QUIC stream has its own loss recovery:
+
+```
+HTTP/2 over TCP (loss blocks everything):
+TCP byte stream: [S1][S2][S3-LOST][S1][S4] → ALL streams stall
+
+HTTP/3 over QUIC (loss is per-stream):
+Stream 1: [data][data] → delivered immediately ✓
+Stream 2: [data][data] → delivered immediately ✓
+Stream 3: [data][LOST] → only Stream 3 waits for retransmit
+Stream 4: [data][data] → delivered immediately ✓
+```
+
+On reliable networks (wired, low-loss), this difference is minimal. On lossy networks (mobile, WiFi, congested links), it is transformative — exactly the networks where user experience suffers most.
+
+### Faster connection establishment
+
+TCP + TLS 1.3 requires at minimum 2 round trips to establish a secure connection (1 RTT for TCP SYN/SYN-ACK, 1 RTT for TLS). With TCP Fast Open, this can be reduced to 1 RTT in some cases.
+
+QUIC combines transport and cryptographic handshake into a single round trip:
+
+```
+TCP + TLS 1.3:                    QUIC:
+Client → SYN                      Client → Initial (crypto)
+Server → SYN-ACK                  Server → Initial + Handshake
+Client → ACK                      Client → Handshake + Data
+Client → TLS ClientHello          (1 RTT total, or 0-RTT if resumed)
+Server → TLS ServerHello
+Client → TLS Finished + Data
+(2 RTT minimum)
+```
+
+For resumed connections (the client has connected before), QUIC supports **0-RTT**: the client sends encrypted application data in the very first packet. This is especially impactful for mobile users who reconnect frequently.
+
+### Connection migration
+
+TCP connections are bound to a 4-tuple: source IP, source port, destination IP, destination port. If any of these change — switching from WiFi to cellular, moving between WiFi access points, or getting a new NAT mapping — the TCP connection breaks and must be re-established.
+
+QUIC connections are identified by a Connection ID that survives IP address changes. When a phone switches from WiFi to LTE, the QUIC connection continues uninterrupted. No new handshake, no lost state, no disrupted streams. For mobile-first applications, this is a substantial user experience improvement.
+
+### QPACK header compression
+
+HTTP/3 cannot use HPACK because HPACK requires in-order delivery of header updates (it uses a synchronized dynamic table). Since QUIC streams are independently ordered, HTTP/3 uses **QPACK**, which decouples header table updates from the streams that reference them. QPACK achieves similar compression ratios to HPACK while working correctly with out-of-order stream delivery.
+
+## Key Differences
+
+1. **Transport-layer HoL blocking.** HTTP/2's single TCP connection means one lost packet stalls all streams. HTTP/3's QUIC streams have independent loss recovery. This is the primary motivation for the protocol change and the most impactful difference on lossy networks.
+
+2. **Handshake latency.** HTTP/2 requires 2 RTTs (TCP + TLS) for a new connection, 1 RTT for resumed. HTTP/3 requires 1 RTT for new connections and supports 0-RTT for resumed connections. On high-latency links (mobile, satellite), saving an RTT is noticeable.
+
+3. **Connection resilience.** HTTP/2 connections break when the client's IP changes. HTTP/3 connections survive network transitions via Connection IDs. This matters enormously on mobile devices that frequently switch between WiFi and cellular.
+
+4. **Middlebox traversal.** TCP is understood by every firewall, load balancer, and network appliance. QUIC over UDP encounters middleboxes that block or throttle non-DNS/NTP UDP traffic, rate-limit UDP, or cannot inspect QUIC's encrypted headers. This is the biggest practical obstacle to HTTP/3 adoption.
+
+5. **Kernel vs. userspace.** TCP is implemented in the OS kernel with decades of optimization. QUIC is typically implemented in userspace, which allows faster iteration but currently has higher CPU overhead per connection. This gap is narrowing as implementations mature and hardware offload for QUIC develops.
+
+## When to Use Which
+
+**HTTP/2 is the better choice when:**
+- Your traffic is primarily on reliable, low-loss networks
+- You need maximum compatibility with corporate firewalls and network appliances
+- Your infrastructure (load balancers, CDN, WAF) does not yet support HTTP/3
+- CPU overhead is a concern and your server handles massive connection counts
+
+**HTTP/3 provides the most benefit when:**
+- Your users are on mobile networks or unreliable WiFi
+- Latency-sensitive applications need the fastest possible connection setup
+- Users frequently switch networks (mobile apps, public transit usage)
+- You are already behind a CDN that supports HTTP/3 (Cloudflare, AWS CloudFront, Akamai)
+
+### The practical reality
+
+Most production deployments do not choose one or the other. Servers advertise HTTP/3 support via the `Alt-Svc` HTTP header, and clients that support QUIC upgrade automatically. Clients that cannot reach the QUIC endpoint (UDP blocked) fall back to HTTP/2 over TCP. This graceful fallback is built into the protocol design:
+
+```
+HTTP/2 Response Header:
+alt-svc: h3=":443"; ma=86400
+
+→ Browser: "Next time, try QUIC on port 443. Cache this for 24 hours."
+→ If QUIC fails, continue using HTTP/2 transparently.
+```
+
+## Common Misconceptions
+
+- **"HTTP/3 is always faster than HTTP/2."** On low-loss wired networks, the difference is negligible. HTTP/3's advantages are most pronounced on lossy or high-latency networks. The QUIC userspace implementation can actually use more CPU than kernel TCP on high-throughput servers.
+
+- **"QUIC is just UDP."** QUIC is a reliable, connection-oriented, encrypted transport protocol that uses UDP packets as its framing. It has congestion control, flow control, and loss recovery — it is as full-featured as TCP, just designed with modern requirements.
+
+- **"HTTP/3 makes TCP obsolete."** TCP remains the foundation for SSH, SMTP, database connections, and countless other protocols. QUIC solves specific problems with HTTP over TCP. The networking ecosystem will run both transports for decades.
+
+- **"0-RTT is free performance."** 0-RTT data is vulnerable to replay attacks because the server cannot verify it was not captured and re-sent by an attacker. Applications must ensure 0-RTT requests are idempotent (safe to repeat). Most implementations limit 0-RTT to GET requests for this reason.
+
+## Key Takeaways
+
+- HTTP/2 multiplexes streams over TCP but suffers from transport-layer head-of-line blocking when packets are lost.
+- HTTP/3 replaces TCP with QUIC, giving each stream independent loss recovery — the single most important improvement for lossy networks.
+- QUIC's integrated TLS 1.3 handshake reduces new connections to 1 RTT and supports 0-RTT for resumed connections.
+- Connection migration via Connection IDs lets HTTP/3 connections survive network changes, a critical advantage for mobile users.
+- In practice, deploy both: serve HTTP/3 with Alt-Svc advertisement and fall back to HTTP/2 for clients or networks where UDP is blocked.

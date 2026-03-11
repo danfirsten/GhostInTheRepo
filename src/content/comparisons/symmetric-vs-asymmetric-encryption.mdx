@@ -1,0 +1,125 @@
+---
+title: "Symmetric vs Asymmetric Encryption"
+sideA: "Symmetric Encryption"
+sideB: "Asymmetric Encryption"
+domains:
+  - "cybersecurity"
+difficulty: "intermediate"
+publishedAt: "2026-03-10"
+summary: "Symmetric encryption uses one shared key for speed; asymmetric encryption uses a key pair to solve the key distribution problem."
+---
+
+Every secure communication on the internet relies on encryption, and virtually all of it uses both symmetric and asymmetric encryption working together. Symmetric encryption is fast and efficient — ideal for bulk data. Asymmetric encryption solves the fundamental problem of how two parties who have never met can establish a shared secret. Understanding how they differ and why they complement each other is essential for anyone working with security, TLS, or cryptographic systems.
+
+## Quick Reference
+
+| Aspect | Symmetric Encryption | Asymmetric Encryption |
+|---|---|---|
+| **Keys** | One shared secret key | Key pair: public + private |
+| **Speed** | Fast (100–1000x faster) | Slow (computationally expensive) |
+| **Key distribution** | The hard problem — how to share the key securely? | Solved — public key can be shared openly |
+| **Common algorithms** | AES-256, ChaCha20 | RSA-2048/4096, ECC (P-256, Curve25519) |
+| **Key size (equivalent security)** | 256 bits | RSA: 3072+ bits, ECC: 256 bits |
+| **Primary use** | Encrypting data (at rest and in transit) | Key exchange, digital signatures, identity |
+| **Example** | Encrypting a file with a password | HTTPS certificate verification |
+
+## Symmetric Encryption in Depth
+
+Symmetric encryption uses the same key to encrypt and decrypt. Both the sender and receiver must possess the identical secret key. This is conceptually simple and computationally efficient, which is why it handles the heavy lifting of encrypting actual data.
+
+**AES (Advanced Encryption Standard)** is the dominant symmetric algorithm. AES-256 operates on 128-bit blocks with a 256-bit key, running through 14 rounds of substitution and permutation. Modern CPUs include hardware AES instructions (AES-NI), making encryption nearly free in terms of performance.
+
+**ChaCha20** is a stream cipher alternative favored on devices without AES hardware acceleration. It's used in TLS 1.3 and WireGuard.
+
+Symmetric encryption requires a mode of operation that defines how blocks are chained:
+
+```
+# AES-GCM: authenticated encryption (confidentiality + integrity)
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+import os
+
+key = AESGCM.generate_key(bit_length=256)  # 32 bytes
+nonce = os.urandom(12)                      # unique per encryption
+aesgcm = AESGCM(key)
+
+ciphertext = aesgcm.encrypt(nonce, plaintext, associated_data)
+decrypted  = aesgcm.decrypt(nonce, ciphertext, associated_data)
+```
+
+The critical weakness isn't the algorithm — it's **key distribution**. If Alice wants to send Bob an encrypted message, how does she get the key to Bob without an eavesdropper intercepting it? Sending the key unencrypted defeats the purpose. This chicken-and-egg problem is exactly what asymmetric encryption solves.
+
+## Asymmetric Encryption in Depth
+
+Asymmetric encryption uses a mathematically linked key pair: a public key (shared openly) and a private key (kept secret). Data encrypted with the public key can only be decrypted with the corresponding private key, and vice versa.
+
+**RSA** relies on the difficulty of factoring large semiprimes. It was the first widely deployed asymmetric algorithm and remains common, though it requires large key sizes (2048–4096 bits) for modern security levels.
+
+**Elliptic Curve Cryptography (ECC)** achieves equivalent security with dramatically smaller keys. A 256-bit ECC key provides roughly the same security as a 3072-bit RSA key, resulting in faster operations and smaller certificates.
+
+Asymmetric encryption enables two critical capabilities beyond confidentiality:
+
+**Key exchange:** Two parties can establish a shared secret over an insecure channel. Diffie-Hellman (DH) and its elliptic curve variant (ECDH) allow Alice and Bob to each contribute public values and independently derive the same shared secret — without ever transmitting it.
+
+**Digital signatures:** A private key can sign data, and anyone with the corresponding public key can verify the signature. This proves authenticity (the signer holds the private key) and integrity (the data hasn't been modified).
+
+```
+# Conceptual digital signature flow
+# Signing (sender has private key)
+hash = SHA256(document)
+signature = encrypt(hash, private_key)
+
+# Verification (anyone has public key)
+hash_from_sig = decrypt(signature, public_key)
+hash_of_doc   = SHA256(document)
+assert hash_from_sig == hash_of_doc  # signature valid
+```
+
+## Key Differences
+
+1. **Performance gap.** Symmetric encryption is orders of magnitude faster. AES-256-GCM can encrypt gigabytes per second on modern hardware. RSA encryption of the same volume would be impractical. This is why asymmetric encryption is never used for bulk data — it handles key exchange and authentication, then hands off to symmetric encryption.
+
+2. **Key distribution.** Symmetric encryption's central challenge is sharing the key securely. Asymmetric encryption eliminates this problem: public keys can be distributed openly, posted on websites, or embedded in certificates. Only the private key must remain secret.
+
+3. **Key management scale.** In a network of N parties, symmetric encryption requires N*(N-1)/2 unique shared keys for every pair to communicate privately. Asymmetric encryption requires only N key pairs — each party manages one pair regardless of how many others they communicate with.
+
+4. **Mathematical foundations.** Symmetric ciphers use substitution-permutation networks (AES) or ARX operations (ChaCha20). Asymmetric schemes rely on hard mathematical problems: integer factorization (RSA), discrete logarithm (DH), or elliptic curve discrete logarithm (ECC). This distinction matters for post-quantum cryptography — symmetric algorithms are largely quantum-resistant (double the key size), while most asymmetric algorithms will be broken by quantum computers.
+
+5. **What they prove.** Symmetric encryption proves that both parties share a secret. Asymmetric encryption can prove identity — only the holder of a specific private key could have produced a given signature. This non-repudiation property is impossible with symmetric keys alone.
+
+## When to Use Which
+
+In practice, you almost never choose one over the other — you use both in a **hybrid encryption** scheme. This is exactly how TLS works:
+
+```
+TLS 1.3 Handshake (simplified):
+
+1. Client → Server: supported cipher suites, client random, ECDH public share
+2. Server → Client: chosen suite, server random, ECDH public share, certificate
+3. Both derive shared secret via ECDH       ← asymmetric (key exchange)
+4. Server signs handshake with private key   ← asymmetric (authentication)
+5. Client verifies signature with cert       ← asymmetric (verification)
+6. Both derive symmetric session keys        ← symmetric keys from shared secret
+7. All application data encrypted with AES   ← symmetric (bulk encryption)
+```
+
+**Use symmetric encryption** for encrypting files at rest, database fields, backups, and any bulk data operation where keys can be securely managed (e.g., via a key management service).
+
+**Use asymmetric encryption** for establishing secure channels with unknown parties, verifying identities via certificates, signing code or documents, and any scenario where you need to prove who produced a piece of data.
+
+## Common Misconceptions
+
+**"Asymmetric encryption is more secure than symmetric."** Security depends on key size and algorithm choice, not the type of encryption. AES-256 is considered extremely secure. The distinction is about what problem each solves, not which is "stronger."
+
+**"HTTPS uses RSA to encrypt your web traffic."** TLS uses asymmetric cryptography only for the handshake — key exchange and server authentication. Your actual HTTP traffic is encrypted with symmetric ciphers (AES-GCM or ChaCha20-Poly1305). RSA or ECC handles the initial trust establishment.
+
+**"Longer keys are always better."** Key length comparisons across types are meaningless. A 256-bit AES key is far more secure than a 256-bit RSA key (which would be trivially breakable). Security equivalence tables exist for cross-type comparisons.
+
+**"Encryption guarantees integrity."** Basic encryption modes (like AES-ECB or AES-CBC without a MAC) provide confidentiality but not integrity — an attacker can modify ciphertext without detection. Always use authenticated encryption (AES-GCM, ChaCha20-Poly1305) or pair encryption with a MAC.
+
+## Key Takeaways
+
+- Symmetric encryption (AES, ChaCha20) is fast and efficient for bulk data but requires both parties to already share a secret key.
+- Asymmetric encryption (RSA, ECC) solves key distribution and enables digital signatures but is too slow for encrypting large amounts of data.
+- Real-world systems use hybrid encryption: asymmetric for key exchange and authentication, symmetric for data encryption. TLS is the canonical example.
+- Post-quantum readiness differs: symmetric algorithms need only doubled key sizes, while current asymmetric algorithms will need to be replaced entirely.
+- Always use authenticated encryption modes to guarantee both confidentiality and integrity.

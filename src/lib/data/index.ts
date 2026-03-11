@@ -16,3 +16,8 @@ export { getAllLearningPaths, getLearningPath } from "./paths";
 export { getAllCodexArticles, getCodexArticle, getAllCodexSlugs } from "./codex";
 export { getAllProjects, getProjectsForDomain, getProject } from "./projects";
 export { getQuizForTopic, getAllQuizzes } from "./quizzes";
+export {
+  getAllComparisons,
+  getComparison,
+  getAllComparisonSlugs,
+} from "./comparisons";

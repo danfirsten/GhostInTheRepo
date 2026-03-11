@@ -89,3 +89,16 @@ export interface Project {
   tags: string[];
   llmPrompt: string;
 }
+
+export interface Comparison {
+  slug: string;
+  title: string;
+  sideA: string;
+  sideB: string;
+  domains: string[];
+  difficulty: "beginner" | "intermediate" | "advanced" | "arcane";
+  readingTime: number;
+  publishedAt: string;
+  summary: string;
+  mdxPath: string;
+}

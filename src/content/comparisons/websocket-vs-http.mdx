@@ -1,0 +1,185 @@
+---
+title: "WebSocket vs HTTP: Persistent Channels vs Request-Response"
+sideA: "WebSocket"
+sideB: "HTTP"
+domains:
+  - "networking"
+  - "web-development"
+difficulty: "intermediate"
+publishedAt: "2026-03-10"
+summary: "HTTP follows a request-response model ideal for document retrieval and APIs; WebSocket upgrades to a persistent, full-duplex channel for real-time bidirectional communication."
+---
+
+HTTP was designed for fetching documents — a client sends a request, the server sends a response, and the connection's job is done. WebSocket was designed for ongoing conversations — once the connection is established, both sides can send messages at any time without waiting for the other. The web evolved from static documents to real-time applications, and these two protocols represent that evolution. Understanding their trade-offs is essential for building anything that updates in real time.
+
+## Quick Reference
+
+| Feature | WebSocket | HTTP |
+|---|---|---|
+| **Communication** | Full-duplex (bidirectional) | Half-duplex (request-response) |
+| **Connection** | Persistent, long-lived | Short-lived (or keep-alive) |
+| **Overhead per message** | 2–14 bytes framing | Full headers per request (~200-800 bytes) |
+| **Server-initiated data** | Native | Requires SSE, polling, or webhooks |
+| **Protocol** | `ws://` / `wss://` | `http://` / `https://` |
+| **Caching** | Not cacheable | Built-in (ETags, Cache-Control) |
+| **Load balancing** | Sticky sessions needed | Stateless, easy to distribute |
+| **Browser support** | All modern browsers | Universal |
+| **Firewall/proxy friendliness** | Sometimes blocked | Always works |
+
+## HTTP in Depth
+
+HTTP (Hypertext Transfer Protocol) follows a strict request-response cycle. The client sends a request with a method, path, headers, and optional body. The server processes it and returns a status code, headers, and optional body. That is one complete exchange.
+
+### The request-response model
+
+```
+Client                    Server
+  |                         |
+  |--- GET /api/data ------>|
+  |                         |  (process)
+  |<-- 200 OK + JSON ------|
+  |                         |
+  |--- POST /api/items ---->|
+  |                         |  (process)
+  |<-- 201 Created --------|
+```
+
+This model is simple, cacheable, and stateless. Every request is independent — the server does not need to remember previous requests (unless you add sessions). This statelessness is why HTTP scales so well: any server behind a load balancer can handle any request.
+
+### When the client needs updates
+
+HTTP's request-response model creates a problem when the server has new data for the client but the client has not asked for it. Several workarounds exist:
+
+**Short polling** — the client sends requests at regular intervals (e.g., every 5 seconds). Simple but wasteful: most responses are "nothing new" and each one carries full HTTP headers.
+
+**Long polling** — the client sends a request and the server holds it open until there is new data (or a timeout). More efficient than short polling but still creates a new request-response cycle for each update.
+
+**Server-Sent Events (SSE)** — the server holds a single HTTP connection open and streams text-based events to the client. SSE is unidirectional (server to client only), automatically reconnects, and supports event types and IDs. It is an excellent middle ground when you need server push but not bidirectional communication.
+
+```javascript
+// Server-Sent Events — server to client streaming over HTTP
+const eventSource = new EventSource('/api/events');
+
+eventSource.onmessage = (event) => {
+  console.log('New data:', event.data);
+};
+
+eventSource.addEventListener('price-update', (event) => {
+  console.log('Price:', JSON.parse(event.data));
+});
+```
+
+## WebSocket in Depth
+
+WebSocket starts as an HTTP request and then "upgrades" the connection to a different protocol. After the handshake, the HTTP framing is gone and both sides communicate through lightweight WebSocket frames.
+
+### The upgrade handshake
+
+```
+Client → Server:
+GET /chat HTTP/1.1
+Upgrade: websocket
+Connection: Upgrade
+Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==
+Sec-WebSocket-Version: 13
+
+Server → Client:
+HTTP/1.1 101 Switching Protocols
+Upgrade: websocket
+Connection: Upgrade
+Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=
+```
+
+After this handshake, the connection becomes a persistent, full-duplex channel. Either side can send a message at any time without waiting for a request.
+
+### Message framing
+
+WebSocket frames have minimal overhead — as little as 2 bytes for small messages (6 bytes with the client-side masking required by the spec). Compare this to HTTP where every request carries hundreds of bytes of headers. For applications that exchange many small messages, this overhead reduction is dramatic.
+
+```javascript
+// WebSocket client — bidirectional communication
+const ws = new WebSocket('wss://example.com/socket');
+
+ws.onopen = () => {
+  ws.send(JSON.stringify({ type: 'subscribe', channel: 'prices' }));
+};
+
+ws.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  console.log('Received:', data);
+};
+
+// Send messages at any time — no request-response cycle
+document.getElementById('send').onclick = () => {
+  ws.send(JSON.stringify({ type: 'chat', text: 'Hello!' }));
+};
+```
+
+### Connection management
+
+WebSocket connections are long-lived and stateful. The server must maintain the connection state (buffers, subscriptions, user context) for each connected client. This has implications for memory usage, connection limits, and what happens during deployments when you need to drain connections gracefully.
+
+## Key Differences
+
+1. **Communication direction.** HTTP is client-initiated only — the server cannot send data without the client asking. WebSocket is truly bidirectional — either side can send at any time. This makes WebSocket natural for chat, collaborative editing, and multiplayer games.
+
+2. **Per-message overhead.** Every HTTP request carries headers — method, path, cookies, content-type, user-agent, and more. These often total 200-800 bytes even when the payload is small. WebSocket frames add only 2-14 bytes of overhead. For high-frequency messaging (hundreds of messages per second), this difference is significant.
+
+3. **Statefulness and scaling.** HTTP's statelessness makes horizontal scaling trivial — add more servers behind a load balancer. WebSocket connections are stateful and sticky — a client's connection lives on one specific server. This requires sticky sessions, shared pub/sub backends (Redis, NATS), or connection migration strategies.
+
+4. **Caching and intermediaries.** HTTP responses can be cached by browsers, CDNs, and reverse proxies. WebSocket messages cannot be cached — they are ephemeral. If your data changes infrequently, HTTP with proper caching headers will be orders of magnitude more efficient than pushing updates over WebSocket.
+
+5. **Infrastructure compatibility.** HTTP works through every proxy, firewall, and CDN. WebSocket connections can be dropped by proxies that do not understand the upgrade handshake, corporate firewalls that block non-HTTP traffic, or load balancers with short idle timeouts. Always implement a fallback strategy.
+
+## When to Use Which
+
+**Choose HTTP when:**
+- Your interaction is request-response (CRUD operations, form submissions, API calls)
+- Data changes infrequently and caching is valuable
+- You need maximum infrastructure compatibility
+- Server-to-client updates are infrequent (SSE or long polling suffice)
+- Stateless scaling is a priority
+
+**Choose WebSocket when:**
+- Both sides need to send messages independently (chat, collaborative editing)
+- You need sub-second latency for updates (live trading, real-time dashboards)
+- Message frequency is high (gaming, IoT telemetry)
+- You need to minimize per-message overhead at scale
+
+**Choose SSE when:**
+- Only the server needs to push updates (live scores, stock tickers, notifications)
+- You want automatic reconnection and event ID tracking
+- You want to keep HTTP's caching and infrastructure compatibility
+- Simplicity matters more than bidirectional communication
+
+### Decision flowchart
+
+```
+Does the server need to push data to the client?
+├── No → Use HTTP
+└── Yes
+    ├── Does the client also need to send frequent messages?
+    │   ├── No → Use SSE (Server-Sent Events)
+    │   └── Yes → Use WebSocket
+    └── Is sub-second latency critical?
+        ├── No → Long polling or SSE may suffice
+        └── Yes → Use WebSocket
+```
+
+## Common Misconceptions
+
+- **"WebSocket is always faster than HTTP."** For a single request-response exchange, HTTP can be faster because there is no upgrade handshake overhead. WebSocket's advantage appears when you send many messages over an already-established connection.
+
+- **"WebSocket replaces HTTP."** WebSocket depends on HTTP for its initial handshake. More importantly, the vast majority of web traffic is request-response (loading pages, API calls, form submissions) where HTTP excels. WebSocket is a specialized tool for real-time bidirectional communication.
+
+- **"You need WebSocket for real-time updates."** Server-Sent Events provide real-time server push with simpler infrastructure, automatic reconnection, and full HTTP compatibility. Many "real-time" features (notifications, live feeds, dashboards) only need server-to-client flow, making SSE the better choice.
+
+- **"WebSocket is just TCP in the browser."** WebSocket has its own framing protocol, message boundaries, ping/pong keepalives, and close handshake. It is higher-level than raw TCP and lower-level than HTTP — a deliberate middle ground.
+
+## Key Takeaways
+
+- HTTP is the right default for most web communication — it is stateless, cacheable, and universally supported.
+- WebSocket is a specialized protocol for bidirectional, real-time communication with minimal per-message overhead.
+- Server-Sent Events occupy a practical middle ground: server push over a standard HTTP connection with automatic reconnection.
+- WebSocket connections are stateful, which complicates horizontal scaling — plan for sticky sessions and shared message buses.
+- Choose the simplest protocol that meets your requirements: HTTP first, SSE for server push, WebSocket only when you need full-duplex communication.

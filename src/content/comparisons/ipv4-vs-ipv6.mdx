@@ -1,0 +1,136 @@
+---
+title: "IPv4 vs IPv6: The Internet's Address Space Evolution"
+sideA: "IPv4"
+sideB: "IPv6"
+domains:
+  - "networking"
+difficulty: "beginner"
+publishedAt: "2026-03-10"
+summary: "IPv4 provides 4.3 billion addresses using 32-bit addressing with NAT as a workaround for exhaustion; IPv6 provides a virtually unlimited 128-bit address space with simplified headers and built-in auto-configuration."
+---
+
+The Internet Protocol assigns addresses to every device on the internet. IPv4, designed in 1981, uses 32-bit addresses — enough for about 4.3 billion unique addresses. That seemed inexhaustible at the time. By 2011, the global pool of IPv4 addresses was officially exhausted. IPv6, with its 128-bit addresses, was designed to solve this and several other problems. Yet decades after its introduction, the transition remains incomplete. Understanding both protocols — and why migration is so slow — is fundamental networking knowledge.
+
+## Quick Reference
+
+| Feature | IPv4 | IPv6 |
+|---|---|---|
+| **Address size** | 32 bits | 128 bits |
+| **Address count** | ~4.3 billion | ~3.4 x 10^38 |
+| **Address format** | Dotted decimal (`192.168.1.1`) | Hex with colons (`2001:0db8::1`) |
+| **Header size** | 20–60 bytes (variable) | 40 bytes (fixed) |
+| **NAT required** | Commonly, yes | No (every device gets a public address) |
+| **Auto-configuration** | DHCP | SLAAC + optional DHCPv6 |
+| **IPsec** | Optional add-on | Designed-in (though not mandatory in practice) |
+| **Broadcast** | Yes | No (replaced by multicast) |
+| **Fragmentation** | Routers and hosts | End hosts only |
+| **Checksum in header** | Yes | No (delegated to link layer/transport) |
+
+## IPv4 in Depth
+
+IPv4 addresses are 32 bits long, written as four decimal octets: `192.168.1.1`. The address space is divided into public (routable on the internet) and private (reserved for local networks) ranges.
+
+### Private addresses and NAT
+
+Because 4.3 billion addresses cannot cover every device on earth, **Network Address Translation (NAT)** became the de facto workaround. An entire home or office network shares a single public IPv4 address. The NAT router translates between internal private addresses (`192.168.x.x`, `10.x.x.x`) and the public address.
+
+```
+Private Network              NAT Router         Internet
+┌─────────────┐            ┌──────────┐
+│ 192.168.1.10│──┐         │          │      ┌────────────┐
+│ 192.168.1.11│──┼────────>│ 73.4.5.6 │─────>│ Web Server │
+│ 192.168.1.12│──┘         │  (public)│      │ 93.184.2.1 │
+└─────────────┘            └──────────┘      └────────────┘
+```
+
+NAT works, but it breaks the end-to-end principle of the internet. Peer-to-peer connections, VoIP, and IoT devices all struggle with NAT traversal. Techniques like STUN, TURN, and hole punching exist but add complexity and points of failure.
+
+### The IPv4 header
+
+The IPv4 header is 20 bytes minimum but can grow to 60 bytes with options. It includes a header checksum that must be recalculated at every router hop (since the TTL field changes), adding processing overhead. The variable header length and options field complicate router hardware design.
+
+## IPv6 in Depth
+
+IPv6 addresses are 128 bits long, written as eight groups of four hexadecimal digits separated by colons: `2001:0db8:85a3:0000:0000:8a2e:0370:7334`. Leading zeros can be omitted, and consecutive groups of zeros can be collapsed to `::`, so this becomes `2001:db8:85a3::8a2e:370:7334`.
+
+### The scale of the address space
+
+128 bits provides approximately 3.4 x 10^38 addresses. To put this in perspective: if you assigned a billion IPv6 addresses every second, it would take over 10 billion years to exhaust the space. Every device — every phone, laptop, IoT sensor, and light bulb — can have its own globally unique public address.
+
+### Simplified header
+
+The IPv6 header is a fixed 40 bytes with no options field and no checksum:
+
+```
+IPv4 Header (variable, 20-60 bytes):     IPv6 Header (fixed, 40 bytes):
+┌─────────────────────────┐              ┌─────────────────────────┐
+│ Version, IHL, ToS       │              │ Version, Traffic Class  │
+│ Total Length, ID         │              │ Flow Label              │
+│ Flags, Fragment Offset   │              │ Payload Length          │
+│ TTL, Protocol, Checksum │              │ Next Header, Hop Limit  │
+│ Source Address (32-bit)  │              │ Source Address (128-bit) │
+│ Dest Address (32-bit)    │              │ Dest Address (128-bit)  │
+│ Options (variable)       │              └─────────────────────────┘
+└─────────────────────────┘
+```
+
+No checksum means routers do not recalculate it at every hop — the transport layer (TCP/UDP) handles integrity. No fragmentation fields — only the sending host can fragment packets, and it uses Path MTU Discovery to find the right size. These simplifications make IPv6 faster to process in router hardware.
+
+### Stateless Address Auto-Configuration (SLAAC)
+
+IPv6 devices can automatically generate their own globally unique address without a DHCP server. A device combines the network prefix (announced by the router via Router Advertisement) with an interface identifier derived from its MAC address or generated randomly. The device is online with a valid address in seconds, with no server infrastructure required.
+
+### No more broadcast
+
+IPv6 eliminates broadcast entirely. Everything that used broadcast in IPv4 — ARP, DHCP discovery, service announcements — uses **multicast** in IPv6. Multicast is more efficient because only devices subscribed to a particular group process the traffic, rather than every device on the network.
+
+## Key Differences
+
+1. **Address exhaustion.** IPv4's 32-bit space is fully allocated. New networks must acquire addresses through transfers, sharing (CGNAT), or transition to IPv6. IPv6's 128-bit space eliminates scarcity as a concern for any foreseeable future.
+
+2. **NAT dependency.** IPv4 networks almost universally require NAT, which complicates peer-to-peer protocols, adds latency, and creates state that can fail. IPv6 restores true end-to-end connectivity — every device has a public address and can be reached directly (subject to firewall rules).
+
+3. **Header efficiency.** IPv4's variable-length header with per-hop checksum recalculation is more expensive to process. IPv6's fixed 40-byte header with no checksum enables faster forwarding in hardware. Extension headers provide optional features without burdening the base header.
+
+4. **Auto-configuration.** IPv4 depends on DHCP servers for address assignment. IPv6's SLAAC lets devices configure themselves, reducing infrastructure requirements and simplifying network bootstrapping, especially in IoT and ad-hoc scenarios.
+
+5. **Security posture.** IPv6 was designed alongside IPsec, and the larger address space makes network scanning dramatically harder — scanning a /64 subnet at 1 million addresses per second would take over 500,000 years. However, IPv6 also introduces new attack surfaces like Router Advertisement spoofing.
+
+## When to Use Which
+
+**IPv4 remains necessary when:**
+- Connecting to services or networks that are IPv4-only (still a significant portion of the internet)
+- Working with legacy hardware or software that does not support IPv6
+- Operating in environments where IPv6 is blocked or not routed
+
+**Deploy IPv6 when:**
+- Building new infrastructure (run dual-stack from day one)
+- You need true end-to-end connectivity (IoT, peer-to-peer, mobile)
+- You want to avoid the complexity and limitations of CGNAT
+- You are planning for long-term growth — IPv4 addresses are a finite, increasingly expensive resource
+
+### Transition mechanisms
+
+The internet cannot switch overnight. Several coexistence strategies are in use:
+
+- **Dual-stack** — devices run both IPv4 and IPv6 simultaneously, choosing the appropriate protocol per connection. This is the most common approach.
+- **Tunneling (6to4, Teredo, ISATAP)** — IPv6 packets are encapsulated inside IPv4 packets to cross IPv4-only networks.
+- **NAT64/DNS64** — translates between IPv6 and IPv4, allowing IPv6-only clients to reach IPv4-only servers.
+
+## Common Misconceptions
+
+- **"IPv6 is faster than IPv4."** The protocols themselves have similar performance. IPv6 can be slightly faster due to simplified headers and no NAT traversal, but the difference is usually negligible. Some paths are slower because IPv6 routing is less optimized than mature IPv4 routing.
+
+- **"IPv6 eliminates the need for firewalls."** Restoring end-to-end addressing means every device is directly reachable, which makes firewalls *more* important, not less. Without NAT as an accidental firewall, you must explicitly configure ingress filtering.
+
+- **"We don't need IPv6 yet because NAT works."** NAT works for client-server web browsing. It breaks or complicates peer-to-peer protocols, WebRTC, IoT, gaming, and any scenario where devices need to accept incoming connections. Carrier-grade NAT (CGNAT) adds another layer of translation and has caused real problems with IP-based rate limiting, geolocation, and abuse tracking.
+
+- **"IPv6 adoption is stalled."** As of 2026, global IPv6 adoption exceeds 45% of Google's traffic, with major networks like Comcast, T-Mobile, and Reliance Jio delivering over 90% IPv6. Adoption is accelerating, not stalled — though the long tail of IPv4-only systems will persist for years.
+
+## Key Takeaways
+
+- IPv4's 32-bit address space is exhausted; NAT is a workaround that breaks end-to-end connectivity and adds complexity.
+- IPv6's 128-bit address space is effectively unlimited, eliminating the need for NAT and restoring direct device-to-device communication.
+- IPv6 simplifies the protocol header, removes per-hop checksum processing, and enables stateless auto-configuration.
+- The transition to IPv6 is ongoing via dual-stack, tunneling, and translation mechanisms — most production networks need to support both protocols today.
+- New projects should deploy dual-stack from the start. IPv4-only infrastructure is technical debt that will grow more expensive to address over time.

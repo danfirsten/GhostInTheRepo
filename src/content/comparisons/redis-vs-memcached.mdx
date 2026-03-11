@@ -1,0 +1,149 @@
+---
+title: "Redis vs Memcached: In-Memory Data Stores Compared"
+sideA: "Redis"
+sideB: "Memcached"
+domains:
+  - "databases"
+difficulty: "intermediate"
+publishedAt: "2026-03-10"
+summary: "A thorough comparison of Redis and Memcached covering data structures, persistence, clustering, memory management, and practical guidance on choosing the right in-memory store."
+---
+
+Redis and Memcached are both in-memory data stores used primarily for caching, but they differ dramatically in capability and design philosophy. Memcached is a focused, high-performance cache. Redis is a full-featured data structure server that happens to also be an excellent cache. Understanding where they overlap and where they diverge will save you from either over-engineering a simple cache or under-powering a complex one.
+
+## Quick Reference
+
+| Aspect | Redis | Memcached |
+|---|---|---|
+| Data types | Strings, hashes, lists, sets, sorted sets, streams, bitmaps, HyperLogLog | Strings only (key-value blobs) |
+| Persistence | RDB snapshots + AOF (append-only file) | None (pure cache) |
+| Max key/value size | 512 MB per value | 1 MB per value (configurable) |
+| Threading | Single-threaded command execution (I/O threads since 6.0) | Multi-threaded |
+| Pub/Sub | Built-in | Not available |
+| Scripting | Lua scripting with atomic execution | Not available |
+| Clustering | Redis Cluster (automatic sharding) | Client-side consistent hashing |
+| Eviction policies | 8 policies (LRU, LFU, TTL-based, random, etc.) | LRU only |
+| Typical latency | Sub-millisecond | Sub-millisecond |
+
+## Redis in Depth
+
+Redis (Remote Dictionary Server) was created by Salvatore Sanfilippo in 2009 and has grown into one of the most versatile infrastructure components in modern systems. It is not just a cache — it is an in-memory data structure server that supports complex operations atomically.
+
+**Rich data structures** are Redis's defining feature. Each type maps naturally to common programming problems:
+
+```bash
+# Sorted set: real-time leaderboard
+ZADD leaderboard 1500 "alice"
+ZADD leaderboard 2300 "bob"
+ZADD leaderboard 1800 "carol"
+ZREVRANGE leaderboard 0 2 WITHSCORES
+# Returns: bob(2300), carol(1800), alice(1500)
+
+# Hash: user session with individual field access
+HSET session:abc user_id 42 role "admin" last_seen "2026-03-10"
+HGET session:abc role
+# Returns: "admin"
+
+# List: message queue (blocking pop)
+LPUSH jobs '{"type":"email","to":"user@example.com"}'
+BRPOP jobs 30
+# Blocks until a job is available or 30s timeout
+```
+
+**Persistence** sets Redis apart from pure caches. RDB snapshots create point-in-time backups at configurable intervals. The AOF (Append Only File) logs every write operation, enabling recovery to the last completed command. You can use both together — RDB for fast restarts and AOF for minimal data loss. This makes Redis viable as a primary data store for certain use cases, not just a cache layer.
+
+**Lua scripting** enables complex atomic operations. A Lua script executes on the server side as a single atomic unit, eliminating race conditions without external locking:
+
+```lua
+-- Atomic rate limiter: allow 10 requests per 60 seconds
+local key = KEYS[1]
+local limit = tonumber(ARGV[1])
+local window = tonumber(ARGV[2])
+local current = redis.call('INCR', key)
+if current == 1 then
+  redis.call('EXPIRE', key, window)
+end
+if current > limit then
+  return 0  -- rate limited
+end
+return 1  -- allowed
+```
+
+**Redis Cluster** provides automatic sharding across multiple nodes with hash slots (16,384 slots distributed across masters). It handles failover via replica promotion and supports resharding without downtime. Redis Sentinel is an older alternative for high availability without sharding.
+
+**Streams**, introduced in Redis 5.0, provide an append-only log data structure similar to Apache Kafka, complete with consumer groups, acknowledgment, and message claiming. This makes Redis suitable for lightweight event streaming without deploying a separate message broker.
+
+## Memcached in Depth
+
+Memcached, created by Brad Fitzpatrick in 2003 for LiveJournal, does one thing exceptionally well: distributed in-memory key-value caching. Its simplicity is its strength.
+
+**Multi-threaded architecture** is Memcached's primary performance advantage. While Redis processes commands on a single thread (with I/O threads for network handling since 6.0), Memcached distributes work across multiple CPU cores natively. For pure cache workloads with many concurrent connections, Memcached can achieve higher throughput per node.
+
+```python
+# Memcached usage: simple and predictable
+import pymemcache
+
+client = pymemcache.Client(('localhost', 11211))
+
+# Store a serialized value with 300-second TTL
+client.set('user:42', '{"name":"Ada","role":"admin"}', expire=300)
+
+# Retrieve it
+data = client.get('user:42')
+
+# Atomic increment (one of few non-string operations)
+client.set('page_views', '0')
+client.incr('page_views', 1)
+```
+
+**Memory efficiency** is excellent. Memcached uses a slab allocator that pre-allocates memory chunks of fixed sizes, reducing fragmentation. For workloads consisting entirely of similarly-sized string values, Memcached's memory overhead per key is lower than Redis.
+
+**Simplicity means fewer failure modes.** There is no persistence, no scripting, no pub/sub, and no complex data structures. Memcached is a cache — if a node fails, you lose that node's data, the client rehashes to remaining nodes, and the cache warms back up. This simplicity makes Memcached easier to reason about and operate in a caching-only context.
+
+**Client-side consistent hashing** distributes keys across a pool of Memcached servers. There is no built-in cluster coordination, which means adding or removing nodes causes some cache misses (proportional to 1/N of total keys) but never causes split-brain or consensus failures.
+
+## Key Differences
+
+1. **Data model complexity.** Redis supports sorted sets, lists, hashes, streams, bitmaps, and HyperLogLog — each with specialized commands. Memcached stores opaque byte strings. If your use case is "cache this serialized object," Memcached is sufficient. If you need server-side operations on structured data, Redis is necessary.
+
+2. **Persistence vs volatility.** Redis can survive restarts without data loss. Memcached is ephemeral by design. This distinction determines whether you can use the store as a source of truth or only as a disposable acceleration layer.
+
+3. **Atomic operations.** Redis provides transactions (MULTI/EXEC), Lua scripting, and individual atomic commands on complex types. Memcached offers CAS (Check-And-Set) for optimistic locking and atomic increment/decrement — nothing more.
+
+4. **Threading model.** Memcached's multi-threaded design better utilizes multi-core hardware for simple operations. Redis compensates with I/O threads and the ability to run multiple instances per machine, but the single-threaded command execution means one slow Lua script can block all clients.
+
+5. **Memory overhead.** Redis's rich data structures carry per-key metadata overhead. For millions of small string values, Memcached uses less memory. For structured data (hashes, sorted sets), Redis is more efficient because you avoid serialization overhead.
+
+## When to Use Which
+
+**Choose Redis when:**
+- You need data structures beyond simple strings (leaderboards, queues, sessions with field-level access)
+- You need persistence or durability guarantees
+- You need pub/sub messaging or lightweight streaming
+- You want atomic server-side logic via Lua scripts
+- You need multiple eviction policies (LFU, volatile-ttl, etc.)
+- You are already using Redis and want to consolidate infrastructure
+
+**Choose Memcached when:**
+- You need a simple, high-throughput cache for serialized objects
+- Your workload benefits from multi-threaded, multi-core utilization per node
+- You want minimal operational complexity with no persistence to manage
+- Memory efficiency for millions of uniform-size keys is critical
+- You want the simplest possible failure model (node loss = partial cache miss, nothing else)
+
+## Common Misconceptions
+
+**"Redis is always faster than Memcached."** For simple GET/SET operations, Memcached's multi-threaded design can match or exceed Redis throughput per node, especially on multi-core machines. Redis's speed advantage appears when you leverage its data structures to reduce round trips — one ZRANGEBYSCORE replaces what would be a fetch-deserialize-sort-reserialize cycle with Memcached.
+
+**"Memcached is obsolete."** Memcached remains the right choice for pure caching at scale. Facebook (Meta) runs one of the largest Memcached deployments in the world. If you do not need Redis's extra features, Memcached's simplicity is an advantage, not a limitation.
+
+**"Redis persistence makes it a database replacement."** Redis can persist data, but it is not a replacement for PostgreSQL or MySQL. It lacks query planning, complex indexing, relational integrity, and the storage efficiency of disk-based databases. Use Redis as a primary store only for data you can reconstruct or afford to lose (sessions, counters, rate limits).
+
+**"You need Memcached for multi-threaded performance."** Running multiple Redis instances on a single machine (one per core) achieves similar aggregate throughput. Redis 7.0+ improved I/O threading further. The threading argument for Memcached matters less than it did five years ago.
+
+## Key Takeaways
+
+- Redis is a data structure server with caching capabilities. Memcached is a caching server, full stop. Choose based on whether you need the extra capabilities.
+- If you need sorted sets, pub/sub, persistence, or Lua scripting, Redis is the only option. If you need a simple, fast cache, both work — and Memcached may be simpler to operate.
+- Memory efficiency favors Memcached for uniform string values and Redis for structured data that would otherwise require serialization.
+- For most new projects, Redis is the default choice because it covers caching and much more. Memcached shines in large-scale deployments where its simplicity and multi-threaded architecture provide a tangible operational or performance advantage.

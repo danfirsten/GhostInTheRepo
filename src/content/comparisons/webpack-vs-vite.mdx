@@ -1,0 +1,134 @@
+---
+title: "Webpack vs Vite: Bundlers for the Modern Web"
+sideA: "Webpack"
+sideB: "Vite"
+domains:
+  - "terminal-and-tools"
+  - "web-development"
+difficulty: "intermediate"
+publishedAt: "2026-03-10"
+summary: "A thorough comparison of Webpack and Vite covering dev server architecture, build performance, HMR speed, configuration complexity, and migration considerations."
+---
+
+Webpack defined the modern bundling era. Vite is redefining it. Webpack bundles everything upfront before serving your dev server. Vite skips the bundle entirely during development, serving native ES modules and transforming files on demand. This architectural difference produces dramatically different developer experiences — but the choice is not always as simple as "use the newer tool."
+
+## Quick Reference
+
+| Aspect | Webpack | Vite |
+|---|---|---|
+| Dev server approach | Bundle everything, then serve | Native ESM, transform on demand |
+| Dev server startup | Slow (seconds to minutes) | Near-instant |
+| HMR speed | Slows as project grows | Consistently fast |
+| Production build | Webpack (custom bundler) | Rollup (v4) or Rolldown (v6+) |
+| Configuration | Verbose, flexible, complex | Minimal defaults, extensible |
+| Plugin ecosystem | Massive (15+ years) | Growing rapidly (Rollup-compatible) |
+| Code splitting | Manual + dynamic imports | Automatic + dynamic imports |
+| CSS handling | Requires loaders (css-loader, etc.) | Built-in (PostCSS, CSS Modules, preprocessors) |
+| TypeScript | Requires ts-loader or babel | Built-in (esbuild for transpilation) |
+| Tree shaking | Yes (with care) | Yes (Rollup-based, more aggressive) |
+
+## Webpack in Depth
+
+Webpack treats every file as a module — JavaScript, CSS, images, fonts, JSON — and builds a dependency graph starting from one or more entry points. It transforms each module through a chain of **loaders**, applies **plugins** for optimization, and outputs bundles ready for the browser.
+
+```javascript
+// webpack.config.js — typical configuration
+module.exports = {
+  entry: './src/index.js',
+  output: {
+    filename: '[name].[contenthash].js',
+    path: path.resolve(__dirname, 'dist'),
+  },
+  module: {
+    rules: [
+      { test: /\.tsx?$/, use: 'ts-loader' },
+      { test: /\.css$/, use: ['style-loader', 'css-loader', 'postcss-loader'] },
+      { test: /\.(png|svg)$/, type: 'asset/resource' },
+    ],
+  },
+  plugins: [
+    new HtmlWebpackPlugin({ template: './src/index.html' }),
+    new MiniCssExtractPlugin(),
+  ],
+};
+```
+
+Webpack's strength is its **flexibility**. The loader and plugin system can handle virtually any transformation: Babel for JSX, sass-loader for SCSS, file-loader for binary assets, DefinePlugin for environment variables, Module Federation for micro-frontends. If you have an unusual build requirement, Webpack almost certainly has a solution.
+
+The cost is **configuration complexity** and **startup speed**. A non-trivial Webpack config can stretch to hundreds of lines. The dev server must parse and bundle the entire application before it can serve the first page, which means cold starts of 10-30 seconds for large projects. Hot Module Replacement (HMR) also degrades as the project grows, because Webpack must rebuild affected module chains.
+
+Webpack remains essential for certain use cases: **Module Federation** (micro-frontends sharing code at runtime), legacy browser support requiring specific polyfill chains, and complex multi-entry configurations that Vite does not yet handle as well.
+
+## Vite in Depth
+
+Vite, created by Evan You (creator of Vue), takes a fundamentally different approach to development. Instead of bundling your application, Vite serves source files as native ES modules. When the browser requests a file, Vite transforms it on the fly using **esbuild** (10-100x faster than Babel/tsc) and serves it directly.
+
+```typescript
+// vite.config.ts — minimal configuration
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    port: 3000,
+  },
+});
+```
+
+That is often the entire configuration. Vite handles TypeScript, JSX, CSS Modules, PostCSS, static assets, and environment variables out of the box. There are no loaders to configure, no style-loader chains, no asset rules. The defaults cover 90% of projects.
+
+**Dev server startup is near-instant** regardless of project size. Vite does not analyze your entire dependency graph at startup — it only transforms files as the browser requests them. A project with 10,000 modules starts just as fast as one with 100, because Vite only processes the modules needed for the current page.
+
+```
+# Startup time comparison (large React project, ~2000 modules)
+# Webpack:  18.4 seconds
+# Vite:      0.3 seconds
+```
+
+**HMR is consistently fast** because Vite only needs to invalidate and re-transform the changed module and its direct importers — not rebuild an entire chunk. The HMR update reaches the browser in under 50ms regardless of project size, compared to Webpack where HMR can take several seconds in large applications.
+
+For production builds, Vite uses **Rollup** — a mature bundler known for excellent tree shaking and efficient code splitting. Vite 6+ is transitioning to Rolldown (a Rust-based Rollup-compatible bundler) for even faster builds. The production build pipeline is separate from the dev server, which means the production output is fully optimized and bundled, unlike the unbundled dev experience.
+
+**Pre-bundling** is Vite's solution for dependencies. On first startup, Vite uses esbuild to bundle `node_modules` dependencies into single files. This converts CommonJS to ESM and reduces the number of HTTP requests for large dependency trees (like lodash's hundreds of internal modules). Pre-bundled dependencies are cached and only re-processed when `package.json` or the lockfile changes.
+
+## Key Differences
+
+1. **Dev server architecture.** Webpack bundles first, serves second. Vite serves first, transforms on demand. This inversion is why Vite's dev server starts instantly and stays fast as projects grow.
+
+2. **HMR at scale.** Webpack's HMR rebuilds affected module chains, which slows linearly with project size. Vite's HMR replaces individual modules via native ESM, maintaining constant speed regardless of scale.
+
+3. **Configuration burden.** A typical Webpack config for a React + TypeScript project requires 50-100 lines of loader and plugin configuration. The equivalent Vite config is 5-15 lines. Vite's opinionated defaults handle what Webpack delegates to the user.
+
+4. **Production builds.** Webpack uses its own bundler with extensive optimization options. Vite uses Rollup, which produces smaller bundles through more aggressive tree shaking but offers fewer low-level optimization knobs.
+
+5. **Plugin compatibility.** Webpack's plugin ecosystem is enormous and battle-tested over 15+ years. Vite's plugin API is Rollup-compatible, which gives it access to many existing Rollup plugins, but some Webpack-specific plugins (like Module Federation) have no Vite equivalent.
+
+6. **Dev/prod parity.** Webpack uses the same bundler in dev and prod, so behavior is consistent. Vite uses native ESM in dev and Rollup in prod, which can occasionally produce differences (e.g., a CommonJS dependency that works in dev but tree-shakes incorrectly in prod).
+
+## When to Use Which
+
+**Choose Vite when:** you are starting a new project with React, Vue, Svelte, or any modern framework. Vite is the default choice for new development in 2026. The faster dev experience, simpler configuration, and excellent defaults make it the obvious starting point.
+
+**Choose Webpack when:** you need Module Federation for micro-frontends, have a complex legacy build pipeline that would be costly to migrate, or require Webpack-specific plugins with no Vite equivalent. Webpack is also necessary when targeting environments that do not support ES modules.
+
+**Migrate from Webpack to Vite when:** dev server startup and HMR speed are hurting productivity, your configuration has grown unwieldy, and your dependencies are ESM-compatible. The migration is straightforward for most projects — replace the config, update scripts, and test thoroughly.
+
+**Stay on Webpack when:** the migration cost outweighs the benefits. If your Webpack setup is stable, your team understands it, and dev performance is acceptable, there is no urgent reason to migrate a working build.
+
+## Common Misconceptions
+
+**"Vite does not bundle for production."** Vite absolutely bundles for production. The unbundled approach is only for development. Production builds use Rollup to produce optimized, code-split bundles with hashing, minification, and tree shaking.
+
+**"Webpack is dead."** Webpack has over 25 million weekly npm downloads and is used by Next.js (alongside Turbopack), Create React App, and countless enterprise applications. It is mature and maintained, not dead.
+
+**"Vite only works with Vue."** Vite was created by Vue's author but supports React, Svelte, Preact, Lit, and vanilla JavaScript/TypeScript through official and community plugins. Framework-agnostic by design.
+
+**"You cannot use CommonJS with Vite."** Vite's pre-bundling step converts CommonJS dependencies to ESM automatically. Most npm packages work without modification. Issues arise only with packages that have complex conditional CJS/ESM exports.
+
+## Key Takeaways
+
+- Vite's native ESM dev server and on-demand transformation produce a dramatically faster development experience than Webpack's upfront bundling approach. For new projects, Vite is the default recommendation.
+- Webpack's flexibility and massive plugin ecosystem make it irreplaceable for certain use cases, particularly Module Federation and complex legacy builds.
+- Production output quality is comparable between the two. The difference is almost entirely in the development experience and configuration ergonomics.
+- Migration from Webpack to Vite is feasible for most projects and typically pays for itself quickly through improved developer productivity. Evaluate your specific plugin dependencies before committing.

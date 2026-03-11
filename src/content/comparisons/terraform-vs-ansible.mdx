@@ -1,0 +1,147 @@
+---
+title: "Terraform vs Ansible"
+sideA: "Terraform"
+sideB: "Ansible"
+domains:
+  - "cloud-devops"
+difficulty: "intermediate"
+publishedAt: "2026-03-10"
+summary: "Terraform provisions infrastructure declaratively with state tracking, while Ansible configures existing machines procedurally over SSH."
+---
+
+Terraform and Ansible are both pillars of the infrastructure-as-code movement, but they solve fundamentally different problems. Terraform excels at provisioning cloud resources — spinning up VMs, networks, load balancers, and databases — while Ansible excels at configuring those resources once they exist: installing packages, managing services, deploying application code. Understanding where each tool shines (and where they overlap) is critical for building a reliable automation pipeline.
+
+## Quick Reference
+
+| Aspect | Terraform | Ansible |
+|---|---|---|
+| **Primary purpose** | Infrastructure provisioning | Configuration management |
+| **Approach** | Declarative | Procedural (with declarative modules) |
+| **Language** | HCL (HashiCorp Configuration Language) | YAML (playbooks) + Jinja2 templates |
+| **State management** | Explicit state file (`terraform.tfstate`) | Stateless — checks live system each run |
+| **Agent required** | No (API-driven) | No (agentless, uses SSH/WinRM) |
+| **Idempotency** | Built-in via desired-state model | Module-dependent; most core modules are idempotent |
+| **Cloud support** | Broad (AWS, Azure, GCP, 3000+ providers) | Broad (cloud modules + any SSH-reachable host) |
+| **Execution** | Plan → Apply workflow | Top-down playbook execution |
+| **Rollback** | Destroy + re-apply, or state manipulation | No built-in rollback; re-run corrected playbook |
+| **Learning curve** | Moderate (HCL, state concepts, provider docs) | Lower (YAML, SSH, familiar Linux commands) |
+
+## Terraform in Depth
+
+Terraform uses a **declarative** model: you describe the desired end state of your infrastructure in `.tf` files written in HCL, and Terraform figures out the steps to get there. The core workflow is `plan` (preview changes), then `apply` (execute them).
+
+The **state file** is central to how Terraform works. It maps your configuration to real-world resources, enabling Terraform to detect drift, calculate diffs, and determine the correct order of operations. State can be stored locally or in a remote backend (S3 + DynamoDB, Terraform Cloud, etc.) for team collaboration.
+
+```hcl
+resource "aws_instance" "web" {
+  ami           = "ami-0c55b159cbfafe1f0"
+  instance_type = "t3.micro"
+
+  tags = {
+    Name = "web-server"
+  }
+}
+
+resource "aws_security_group" "web_sg" {
+  name = "web-sg"
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+```
+
+Terraform automatically builds a **dependency graph** from resource references. If `aws_instance.web` references `aws_security_group.web_sg`, Terraform creates the security group first. This graph-based execution enables safe parallelism.
+
+**Providers** are plugins that translate HCL into API calls. The Terraform Registry hosts over 3,000 providers covering every major cloud, SaaS tool, and even things like DNS registrars and GitHub repositories.
+
+## Ansible in Depth
+
+Ansible takes a **procedural** approach: playbooks describe a sequence of tasks to execute on target hosts. It connects over SSH (or WinRM for Windows), requires no agent on the target machine, and runs tasks in the order you write them.
+
+```yaml
+- name: Configure web server
+  hosts: webservers
+  become: yes
+  tasks:
+    - name: Install nginx
+      apt:
+        name: nginx
+        state: present
+
+    - name: Copy site config
+      template:
+        src: nginx.conf.j2
+        dest: /etc/nginx/sites-available/default
+      notify: restart nginx
+
+    - name: Ensure nginx is running
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+
+  handlers:
+    - name: restart nginx
+      service:
+        name: nginx
+        state: restarted
+```
+
+Ansible is **stateless** — it does not maintain a record of what it has previously done. Each run evaluates the current state of the target system and applies changes as needed. Most built-in modules (like `apt`, `service`, `file`) are idempotent: running them multiple times produces the same result. However, the `shell` and `command` modules are not inherently idempotent, and careless use can cause issues.
+
+**Inventory** files define which hosts belong to which groups. Dynamic inventory scripts can pull host lists from cloud providers, so you don't hardcode IPs.
+
+Ansible also supports **roles** for reusable, shareable configuration units, and **Ansible Galaxy** provides a registry of community-maintained roles.
+
+## Key Differences
+
+1. **Provisioning vs. configuration.** Terraform creates infrastructure (VPCs, instances, databases). Ansible configures what's already running (packages, files, services). They address different layers of the stack.
+
+2. **State tracking vs. stateless.** Terraform's state file is both its greatest strength (accurate diffs, drift detection, dependency ordering) and its greatest operational burden (state locking, secure storage, corruption risk). Ansible avoids this complexity entirely by querying live systems.
+
+3. **Declarative vs. procedural.** In Terraform, you say "I want 3 servers" and it calculates what to add or remove. In Ansible, you write the steps to achieve the outcome. Declarative models handle scaling and changes more predictably; procedural models offer more fine-grained control over execution order.
+
+4. **Change previews.** `terraform plan` gives you a detailed preview of every resource that will be created, modified, or destroyed before you commit. Ansible has `--check` (dry-run) mode, but it is less reliable because some tasks depend on the output of previous tasks that haven't actually run.
+
+5. **Error handling and rollback.** Terraform can partially apply changes — if step 5 of 10 fails, steps 1-4 are already applied. You fix the config and re-run. Ansible similarly stops at the failed task, but since it's stateless, re-running from the top is safe (assuming idempotent modules). Neither tool has true automatic rollback.
+
+6. **Language ergonomics.** HCL is purpose-built for infrastructure and supports expressions, loops, and conditionals, but it's a language you'll only use with HashiCorp tools. YAML is universally familiar but can become unwieldy for complex logic — deeply nested Jinja2 templates in Ansible playbooks are a common pain point.
+
+## When to Use Which
+
+**Use Terraform when:**
+- Provisioning cloud infrastructure (compute, networking, storage, managed services)
+- You need a clear audit trail of what exists via state files
+- Multiple environments need identical infrastructure (dev/staging/prod)
+- You want to preview all changes before applying them
+
+**Use Ansible when:**
+- Configuring servers after they're provisioned (packages, users, files, services)
+- Running ad-hoc commands across a fleet of machines
+- Deploying application code to existing infrastructure
+- Managing on-premise hardware where API-driven provisioning isn't available
+
+**Use both together when:**
+- Terraform provisions the infrastructure, then Ansible configures it. Terraform's `local-exec` or `remote-exec` provisioners can trigger Ansible playbooks after resources are created. This is the most common pattern in production environments.
+
+## Common Misconceptions
+
+**"Terraform can replace Ansible."** Terraform has provisioners (`remote-exec`) that can run scripts on newly created instances, but they're limited and HashiCorp explicitly discourages using them for complex configuration. Terraform is not a configuration management tool.
+
+**"Ansible can replace Terraform."** Ansible has cloud modules (e.g., `amazon.aws.ec2_instance`) that can provision infrastructure, but without state tracking, managing the lifecycle of cloud resources — especially detecting drift and handling deletions — is fragile and error-prone.
+
+**"Declarative is always better than procedural."** Declarative models excel for infrastructure that maps cleanly to API resources. But for multi-step configuration tasks with conditional logic (install package A, then configure it based on the result of a check, then restart if changed), procedural playbooks are more natural and readable.
+
+**"Terraform state is a single point of failure."** With proper setup — remote backends, state locking, encryption, and versioning — state management is a solved problem. The risk comes from teams that skip these practices, not from the concept itself.
+
+## Key Takeaways
+
+- Terraform and Ansible are **complementary**, not competing. Terraform provisions infrastructure; Ansible configures it.
+- Terraform's declarative model and state file give you predictable diffs and drift detection. Ansible's stateless, agentless approach makes it lightweight and quick to adopt.
+- The standard production pattern is **Terraform for infra, Ansible for config**. Fight the urge to make one tool do everything.
+- Both tools are idempotent when used correctly, but the mechanisms differ: Terraform compares desired state to recorded state, while Ansible modules check live system state.
+- Start with whichever solves your immediate problem, then layer in the other when the need arises.

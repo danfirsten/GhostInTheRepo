@@ -1,0 +1,127 @@
+---
+title: "Unit vs Integration vs E2E Tests: The Testing Pyramid Explained"
+sideA: "Unit Tests"
+sideB: "Integration & E2E Tests"
+domains:
+  - "software-engineering"
+difficulty: "beginner"
+publishedAt: "2026-03-10"
+summary: "A thorough comparison of unit, integration, and end-to-end testing covering scope, speed, cost, confidence, and the right distribution for your test suite."
+---
+
+Every software team eventually asks the same question: how much of each kind of test should we write? The answer lives in the testing pyramid — a model that balances speed, cost, and confidence. Understanding what each layer catches, and what it misses, is the difference between a test suite that enables fast delivery and one that becomes a maintenance burden.
+
+## Quick Reference
+
+| Aspect | Unit Tests | Integration Tests | End-to-End (E2E) Tests |
+|---|---|---|---|
+| Scope | Single function or class | Multiple components together | Full user workflow |
+| Speed | Milliseconds | Seconds | Seconds to minutes |
+| Dependencies | All mocked/stubbed | Some real, some mocked | Real (browser, DB, API) |
+| Confidence | Logic correctness | Components work together | System works for users |
+| Cost to maintain | Low | Medium | High |
+| Flakiness | Very low | Low to medium | Medium to high |
+| Failure diagnosis | Pinpoints exact location | Narrows to interaction area | "Something is broken" |
+| Typical ratio | ~70% of suite | ~20% of suite | ~10% of suite |
+
+## Unit Tests in Depth
+
+A unit test exercises the smallest testable piece of code in complete isolation. You pass input to a function and assert on its output. Everything external — databases, APIs, file systems, even other classes — is replaced with mocks, stubs, or fakes.
+
+```python
+# Unit test: pure logic, no dependencies
+def test_calculate_discount():
+    assert calculate_discount(price=100, percent=15) == 85.0
+    assert calculate_discount(price=100, percent=0) == 100.0
+    assert calculate_discount(price=0, percent=50) == 0.0
+```
+
+Unit tests run in milliseconds because they touch nothing outside of memory. A suite of 5,000 unit tests can finish in under 10 seconds. This speed enables tight feedback loops — you run them on every save, every commit, every CI build.
+
+The tradeoff is **shallow confidence**. A unit test proves that `calculateDiscount` works in isolation, but says nothing about whether the discount is correctly applied during checkout when the payment gateway, inventory service, and database are involved. Mocks can also become a liability: if you mock an API that changes its response shape, your unit tests still pass while production breaks.
+
+Unit tests are most valuable for **pure logic** — algorithms, data transformations, validation rules, state machines, and utility functions. They are least valuable for code that is mostly wiring (passing data between services with minimal transformation).
+
+## Integration Tests in Depth
+
+Integration tests verify that two or more components work together correctly. The boundary varies: it might be your API handler talking to a real database, your service layer calling an actual message queue, or your React component making real HTTP requests to a test server.
+
+```javascript
+// Integration test: API route + database
+test('POST /users creates a user and returns 201', async () => {
+  const res = await request(app)
+    .post('/users')
+    .send({ name: 'Ada', email: 'ada@example.com' });
+
+  expect(res.status).toBe(201);
+
+  const user = await db.query('SELECT * FROM users WHERE email = $1', ['ada@example.com']);
+  expect(user.rows[0].name).toBe('Ada');
+});
+```
+
+Integration tests are slower than unit tests because they spin up real infrastructure — a test database, an HTTP server, sometimes containers via Docker Compose. A single test might take one to five seconds, and a suite of 500 might take several minutes.
+
+The payoff is **interaction confidence**. Integration tests catch serialization bugs, SQL query errors, misconfigured middleware, incorrect HTTP status codes, and race conditions between components. These are the bugs that unit tests structurally cannot detect because they mock away the very boundaries where the bugs live.
+
+## End-to-End Tests in Depth
+
+E2E tests simulate a real user interacting with the fully deployed application. A browser automation tool (Playwright, Cypress) clicks buttons, fills forms, navigates pages, and asserts on visible outcomes. The entire stack is running — frontend, backend, database, third-party services (or sandboxed versions of them).
+
+```typescript
+// E2E test: full checkout flow
+test('user can complete checkout', async ({ page }) => {
+  await page.goto('/products');
+  await page.click('[data-testid="add-to-cart"]');
+  await page.click('[data-testid="checkout"]');
+  await page.fill('#email', 'user@test.com');
+  await page.fill('#card', '4242424242424242');
+  await page.click('button:has-text("Pay")');
+  await expect(page.locator('.confirmation')).toContainText('Order confirmed');
+});
+```
+
+E2E tests provide the **highest confidence** that the system works as users experience it. They validate that frontend and backend are correctly integrated, that CSS does not hide a critical button, that JavaScript errors do not break a workflow, and that third-party integrations function.
+
+The cost is significant. E2E tests are slow (30 seconds to several minutes per test), flaky (timing issues, network hiccups, browser quirks), and expensive to maintain (UI changes break selectors). A failing E2E test often tells you *something* is broken without telling you *what* — leading to long debugging sessions.
+
+## Key Differences
+
+1. **Isolation vs realism.** Unit tests control everything, which makes them fast and deterministic but disconnected from reality. E2E tests control nothing, which makes them realistic but fragile. Integration tests find the middle ground.
+
+2. **Failure specificity.** When a unit test fails, you know exactly which function broke. When an E2E test fails, you might spend 30 minutes determining whether the bug is in the frontend, the API, or the database. Integration tests narrow failures to the interaction boundary.
+
+3. **Mock dependency.** Unit tests require extensive mocking, which adds maintenance overhead and risks testing the mocks rather than the code. Integration and E2E tests use fewer or no mocks, but pay the cost in speed and setup complexity.
+
+4. **Bug categories.** Unit tests catch logic errors, off-by-one bugs, and edge cases. Integration tests catch wiring errors, contract violations, and query bugs. E2E tests catch visual regressions, broken flows, and cross-cutting concerns like authentication.
+
+5. **Cost curve.** The cost to write a unit test is low and stays low. The cost to maintain an E2E test grows with every UI change. Teams that over-invest in E2E tests often end up with a slow, flaky suite that developers stop trusting.
+
+6. **Speed and CI impact.** A unit-heavy suite keeps CI under five minutes. An E2E-heavy suite can push CI past 30 minutes, slowing down every pull request and encouraging developers to skip tests.
+
+## When to Use Which
+
+**Lean on unit tests when:** you have complex business logic, algorithms, or data transformations. Pure functions and state machines are ideal candidates.
+
+**Lean on integration tests when:** the risk is at the boundary — database queries, API contracts, message serialization, middleware chains. If the interesting behavior is how components interact, test the interaction.
+
+**Lean on E2E tests when:** you need to verify critical user journeys — signup, checkout, payment, onboarding. Keep the suite small: cover the 5-10 most important workflows rather than trying to test everything through the browser.
+
+**The pyramid in practice:** aim for roughly 70% unit, 20% integration, and 10% E2E. This is a guideline, not a rule. A CRUD app with little logic might have more integration tests than unit tests. A math library might be 95% unit tests.
+
+## Common Misconceptions
+
+**"Unit tests are enough if you have high coverage."** Code coverage measures which lines execute, not whether components integrate correctly. You can have 100% unit test coverage and still deploy a broken application because the API returns JSON that the frontend cannot parse.
+
+**"E2E tests replace all other testing."** E2E tests are too slow, too flaky, and too coarse to be your primary testing strategy. When an E2E test fails, you want a lower-level test to pinpoint the cause.
+
+**"Integration tests are just big unit tests."** The defining difference is real dependencies. If everything is mocked, it is a unit test regardless of how many classes it touches.
+
+**"You should test every function."** Test behavior, not implementation. If a private helper function is only reachable through a public method, testing the public method is sufficient. Testing every internal function couples your tests to implementation details and makes refactoring painful.
+
+## Key Takeaways
+
+- The testing pyramid balances speed (unit) with confidence (E2E). Most of your tests should be fast and focused, with a smaller number of slow, broad tests for critical workflows.
+- Each layer catches bugs the others miss. Unit tests catch logic errors. Integration tests catch wiring bugs. E2E tests catch broken user journeys. You need all three.
+- Mocks are a double-edged sword. They make tests fast and isolated, but they also disconnect tests from reality. Use them deliberately, not by default.
+- Start with the question "where is the risk?" and write tests at the layer that addresses that risk most efficiently.

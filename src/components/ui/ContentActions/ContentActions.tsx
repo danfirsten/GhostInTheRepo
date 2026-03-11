@@ -10,7 +10,7 @@ import { useAuth } from "@/lib/hooks/useAuth";
 import styles from "./ContentActions.module.css";
 
 interface ContentActionsProps {
-  contentType: "topic" | "codex" | "cheatsheet";
+  contentType: "topic" | "codex" | "cheatsheet" | "comparison";
   contentSlug: string;
   domainSlug?: string;
   /** Label for the complete button. Defaults to "Mark as Complete" */

@@ -1,0 +1,123 @@
+---
+title: "SPA vs MPA: Single-Page and Multi-Page Architectures"
+sideA: "SPA"
+sideB: "MPA"
+domains:
+  - "web-development"
+difficulty: "beginner"
+publishedAt: "2026-03-10"
+summary: "A comparison of single-page applications and multi-page applications — how they handle navigation, performance, SEO, and where modern tools like Astro and HTMX are changing the landscape."
+---
+
+The web was born as a collection of linked documents — multi-page by nature. Single-page applications arrived to make the web feel like native software, handling navigation entirely in JavaScript without full page reloads. Both architectures are alive and well, but the tradeoffs between them shape everything from user experience to deployment complexity. Understanding the SPA vs MPA distinction is foundational to making good web architecture decisions.
+
+## Quick Reference
+
+| Aspect | SPA (Single-Page App) | MPA (Multi-Page App) |
+|---|---|---|
+| **Navigation** | Client-side (JavaScript swaps content) | Server-side (browser loads new HTML) |
+| **Initial load** | Heavier (full JS bundle) | Lighter (only current page's assets) |
+| **Subsequent navigation** | Fast (no full reload) | Slower (full page reload each time) |
+| **SEO** | Requires extra work (SSR/prerendering) | Naturally excellent |
+| **Browser back button** | Must be manually managed (History API) | Works natively |
+| **JavaScript dependency** | Required — page is non-functional without JS | Optional — HTML works without JS |
+| **State persistence** | State lives in memory across navigations | State resets on each page load |
+| **Offline capability** | Easier with service workers | Harder (each page is a separate request) |
+| **Examples** | Gmail, Figma, Spotify Web | Wikipedia, blogs, government sites |
+| **Frameworks** | React, Vue, Angular (with routers) | Astro, Rails, Django, PHP, HTMX |
+
+## SPA in Depth
+
+A single-page application loads one HTML document and then dynamically rewrites the page content using JavaScript. When you click a link, no request goes to the server for a new page — instead, a client-side router intercepts the click, updates the URL via the History API, and renders the new view from JavaScript.
+
+```jsx
+// React Router — navigation without page reload
+import { BrowserRouter, Route, Link } from 'react-router-dom';
+
+function App() {
+  return (
+    <BrowserRouter>
+      <nav>
+        <Link to="/">Home</Link>
+        <Link to="/about">About</Link>
+      </nav>
+      <Route path="/" component={Home} />
+      <Route path="/about" component={About} />
+    </BrowserRouter>
+  );
+}
+```
+
+The SPA model creates a fluid, app-like experience. Transitions between views can be animated. Shared UI elements (navigation bars, sidebars, audio players) persist without re-rendering. Application state stays in memory — a half-filled form is not lost when you navigate away and back.
+
+The cost is the **initial JavaScript payload**. Before the user sees anything meaningful, the browser must download, parse, and execute the application bundle. Code splitting helps by loading only the JavaScript needed for the current route, but the baseline overhead is always higher than a simple HTML page.
+
+SPAs also inherit responsibilities the browser normally handles. Scroll position restoration, focus management for accessibility, the browser back and forward buttons, and link previews for social sharing all require explicit implementation. Get any of these wrong and the experience degrades.
+
+## MPA in Depth
+
+A multi-page application is the web's default model. Each URL corresponds to a separate HTML document on the server. Clicking a link triggers a full HTTP request, and the browser replaces the entire page with the server's response.
+
+```
+User clicks link → Browser sends GET request → Server returns full HTML → Browser renders new page
+```
+
+This model has powerful advantages. **Every page is independently addressable** — bookmarking, sharing, and deep linking work without any JavaScript. **SEO is native** — crawlers receive complete HTML. **Progressive enhancement** is straightforward — the core experience works without JavaScript, and you layer interactivity on top.
+
+The perceived weakness of MPAs — the "flash of white" during full page reloads — has been significantly mitigated by modern browsers. Browser caching, HTTP/2 multiplexing, prefetching (`<link rel="prefetch">`), and paint-holding (browsers now hold the previous page's paint until the new page is ready) make MPA navigation feel much smoother than it did a decade ago.
+
+**Modern MPA frameworks** have further closed the gap:
+
+- **Astro** generates zero-JavaScript HTML pages by default, adding interactivity only where needed via "islands." A blog built with Astro ships no JavaScript unless a specific component requires it.
+- **HTMX** lets you add SPA-like interactions (partial page updates, smooth transitions) to MPAs with HTML attributes instead of JavaScript:
+
+```html
+<!-- HTMX — clicking this button replaces #results with server HTML -->
+<button hx-get="/search?q=test" hx-target="#results" hx-swap="innerHTML">
+  Search
+</button>
+<div id="results"></div>
+```
+
+- The **View Transitions API** (now supported in Chrome and Safari) enables animated page transitions in MPAs without any JavaScript framework — the browser handles the crossfade natively.
+
+## Key Differences
+
+1. **Navigation model**: SPAs intercept navigation and handle it in JavaScript. MPAs rely on the browser's native navigation. This single distinction drives every other difference.
+
+2. **Initial vs subsequent load**: MPAs win on initial page load (less JavaScript to download). SPAs win on subsequent navigation (no network round-trip for HTML). The question is which matters more for your users.
+
+3. **SEO**: MPAs serve crawlable HTML by default. SPAs require server-side rendering or prerendering to be SEO-friendly, adding infrastructure complexity. If your content needs to rank in search engines, MPAs have a structural advantage.
+
+4. **State management**: SPAs keep state in memory across navigations, which is essential for complex interactive applications (think a design tool with undo history). MPAs lose in-memory state on every navigation, requiring the server or URL parameters to maintain continuity.
+
+5. **Progressive enhancement**: MPAs can work entirely without JavaScript — forms submit, links navigate, content renders. SPAs are fundamentally dependent on JavaScript. If your audience includes users on slow connections, old devices, or with JavaScript disabled, MPAs are more resilient.
+
+6. **Complexity budget**: SPAs require you to solve routing, scroll restoration, focus management, code splitting, and state persistence — problems the browser solves for free in MPAs. Each solution adds bundle size and maintenance burden.
+
+## When to Use Which
+
+**Choose an SPA when** you are building a highly interactive application where state persistence and seamless transitions are critical — design tools, email clients, music players, real-time collaboration apps, or complex dashboards. The user opens the app once and works within it for an extended session.
+
+**Choose an MPA when** you are building a content-driven site — blogs, documentation, marketing pages, e-commerce storefronts, or any site where SEO and fast initial loads matter more than in-app transitions. Modern MPA tools (Astro, HTMX, View Transitions API) can add interactivity without the SPA tax.
+
+**Consider a hybrid** when different parts of your site have different needs. Many Next.js and Nuxt applications are technically SPAs with server-side rendering, getting the SEO benefits of MPAs with the navigation smoothness of SPAs. Astro lets you embed interactive React or Vue "islands" inside an otherwise static MPA.
+
+## Common Misconceptions
+
+- **"MPAs feel slow and outdated."** Modern MPAs with prefetching, paint-holding, and the View Transitions API feel remarkably smooth. The "white flash" stereotype is largely outdated.
+
+- **"SPAs are always better for user experience."** SPAs can feel worse than MPAs when the initial JavaScript bundle is large, when route-based code splitting is poorly configured, or when accessibility concerns (focus management, screen reader announcements) are neglected.
+
+- **"You need React/Vue/Angular for any interactive site."** HTMX, Alpine.js, and vanilla JavaScript with progressive enhancement can handle a surprising amount of interactivity without a full SPA framework. The JavaScript ecosystem has overcorrected toward SPAs for sites that would be better served as MPAs.
+
+- **"MPAs cannot have smooth transitions."** The View Transitions API is a browser-native solution for animated page transitions in MPAs. Astro, Nuxt, and SvelteKit already integrate it. No JavaScript framework required.
+
+- **"SPAs don't work with the back button."** Well-built SPAs using the History API handle back/forward navigation correctly. The misconception comes from poorly implemented SPAs that break browser conventions.
+
+## Key Takeaways
+
+- SPAs handle navigation in JavaScript for seamless, app-like experiences. MPAs use the browser's native navigation for simplicity, SEO, and progressive enhancement.
+- The SPA model is ideal for complex interactive applications. The MPA model is ideal for content-driven sites. Most projects benefit from one or the other — not from forcing every site into an SPA.
+- Modern MPA tools (Astro, HTMX, View Transitions API) have dramatically narrowed the experience gap. Evaluate whether you truly need an SPA before committing to one.
+- The trend in 2025-2026 is toward "use the platform" — leveraging browser capabilities and shipping less JavaScript, which favors the MPA architecture for many use cases.

@@ -1,0 +1,140 @@
+---
+title: "React vs Vue vs Angular"
+sideA: "React"
+sideB: "Vue & Angular"
+domains:
+  - "web-development"
+difficulty: "intermediate"
+publishedAt: "2026-03-10"
+summary: "A detailed comparison of the three dominant front-end technologies — React's library-first philosophy, Vue's progressive approach, and Angular's full-framework opinion."
+---
+
+Choosing a front-end technology is one of the most consequential decisions in a web project. React, Vue, and Angular each represent a distinct philosophy about how UI development should work. React is a focused rendering library that leaves architecture to you. Vue is a progressive framework that scales from a drop-in script tag to a full build system. Angular is an opinionated, batteries-included platform built for large-scale enterprise applications. Understanding what each brings to the table — and what it intentionally leaves out — will save you from fighting your tools later.
+
+## Quick Reference
+
+| Feature | React | Vue | Angular |
+|---|---|---|---|
+| **Type** | UI library | Progressive framework | Full framework |
+| **Language** | JavaScript / TypeScript | JavaScript / TypeScript | TypeScript (required) |
+| **Templating** | JSX | Single-File Components (HTML templates) | HTML templates with directives |
+| **Reactivity** | Immutable state + hooks | Proxy-based reactive refs | Zone.js / Signals (v17+) |
+| **State management** | External (Redux, Zustand, Jotai) | Pinia (official) | Services + RxJS |
+| **CLI / tooling** | Vite, Next.js, CRA (deprecated) | Vite, Nuxt | Angular CLI (`ng`) |
+| **Bundle size (min)** | ~40 kB | ~33 kB | ~90 kB |
+| **Corporate backing** | Meta | Community (Evan You) | Google |
+| **First release** | 2013 | 2014 | 2016 |
+| **Learning curve** | Moderate | Low–Moderate | Steep |
+
+## React in Depth
+
+React introduced the component model that now dominates front-end development. At its core, React is a rendering library: you describe UI as a function of state, and React efficiently reconciles changes to the DOM through its virtual DOM diffing algorithm.
+
+**JSX** is React's signature. It embeds HTML-like syntax inside JavaScript, which means your template logic and markup live together. This feels strange at first but becomes natural — conditionals are plain `if` statements, loops are `.map()` calls, and there is no framework-specific syntax to memorize.
+
+```jsx
+function UserCard({ user }) {
+  return (
+    <div className="card">
+      <h2>{user.name}</h2>
+      {user.isAdmin && <span className="badge">Admin</span>}
+    </div>
+  );
+}
+```
+
+**Hooks** replaced class components as the primary API. `useState`, `useEffect`, `useMemo`, and `useCallback` give you fine-grained control over state, side effects, and performance. The tradeoff is that hooks have subtle rules (dependency arrays, closure stale-value bugs) that trip up beginners and experts alike.
+
+React deliberately does not include routing, state management, or a build system. This "bring your own architecture" approach means you pick the best tool for each job — but it also means more decisions up front and a fragmented ecosystem. React Server Components and the partnership with Next.js are pushing React toward a more full-stack direction, blurring the line between library and framework.
+
+## Vue in Depth
+
+Vue was created by Evan You after working with Angular at Google, and it shows. Vue takes the best ergonomics of Angular's template system and combines them with React's component model, wrapped in a gentler learning curve.
+
+**Single-File Components (SFCs)** are Vue's defining feature. A `.vue` file contains `<template>`, `<script>`, and `<style>` blocks, giving each component a clean separation of concerns within a single file.
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const count = ref(0)
+</script>
+
+<template>
+  <button @click="count++">Count: {{ count }}</button>
+</template>
+
+<style scoped>
+button { font-weight: bold; }
+</style>
+```
+
+Vue 3's **Composition API** (with `<script setup>`) is heavily inspired by React hooks but avoids their pain points. Reactivity is proxy-based — when you mutate a `ref` or `reactive` object, Vue automatically tracks which components depend on that data and re-renders only those components. There are no dependency arrays to manage.
+
+**Pinia**, the official state management library, replaced Vuex and is remarkably simple — just define a store as a function that returns reactive state. Vue's ecosystem is smaller than React's but more cohesive: Vue Router and Pinia are maintained by the core team, so they always work together seamlessly.
+
+## Angular in Depth
+
+Angular is not just a framework — it is a platform. It ships with a router, form handling (both template-driven and reactive), HTTP client, dependency injection, internationalization, animations, and a powerful CLI that generates boilerplate, runs tests, and builds for production.
+
+Angular **requires TypeScript**. Components use decorators and metadata:
+
+```typescript
+@Component({
+  selector: 'app-user-card',
+  template: `
+    <div class="card">
+      <h2>{{ user.name }}</h2>
+      <span *ngIf="user.isAdmin" class="badge">Admin</span>
+    </div>
+  `,
+})
+export class UserCardComponent {
+  @Input() user!: User;
+}
+```
+
+Angular's **dependency injection** system is enterprise-grade — services are singleton by default, injectable at any level of the component tree, and testable in isolation. Combined with **RxJS** for asynchronous data streams, Angular excels at complex, data-heavy applications like dashboards, admin panels, and internal tools.
+
+The tradeoff is complexity. Angular's learning curve includes TypeScript, decorators, modules (now optional with standalone components), RxJS operators, Zone.js change detection, and a large API surface. Angular v17+ introduced **Signals** as a simpler reactivity primitive, moving the framework closer to the reactive model Vue and Solid popularized.
+
+## Key Differences
+
+1. **Philosophy**: React gives you a view layer and freedom. Vue gives you a graduated path from simple to complex. Angular gives you a full architecture from day one.
+
+2. **Templates vs JSX**: Vue and Angular use HTML-based templates with directives (`v-if`, `*ngIf`). React uses JSX, which is JavaScript all the way down. Template-based approaches are more accessible; JSX is more composable.
+
+3. **Reactivity model**: React re-renders components top-down and relies on immutability and memoization for performance. Vue tracks dependencies at the variable level via proxies. Angular historically used Zone.js to detect changes globally but is migrating to fine-grained Signals.
+
+4. **Ecosystem cohesion**: Angular bundles everything. Vue maintains official companion libraries. React relies on third-party solutions, leading to more choice but also more "decision fatigue."
+
+5. **TypeScript integration**: Angular mandates TypeScript. React and Vue support it optionally, but Vue 3's Composition API and React's newer APIs both have excellent type inference.
+
+6. **Bundle size and performance**: Vue is the lightest out of the box. React is middle-weight. Angular is the heaviest due to its runtime (Zone.js, DI container, RxJS), though tree-shaking has improved significantly.
+
+## When to Use Which
+
+**Choose React when** you want maximum flexibility, your team is experienced, or you're building with Next.js for a full-stack React architecture. React's job market is the largest, and its ecosystem has a solution for nearly every problem.
+
+**Choose Vue when** you want a gentle learning curve, a cohesive official ecosystem, or you're migrating an existing project incrementally (Vue can be dropped into a page via a script tag). Vue is excellent for small-to-medium projects and teams that value developer happiness.
+
+**Choose Angular when** you're building a large enterprise application with multiple teams, you need strong architectural opinions out of the box, or your organization already uses TypeScript heavily. Angular's CLI, testing infrastructure, and DI system pay dividends at scale.
+
+## Common Misconceptions
+
+- **"React is a framework."** It is a library. The framework experience comes from combining React with Next.js, React Router, and a state manager. React alone handles only rendering.
+
+- **"Vue is only for small projects."** Companies like Alibaba, GitLab, and Nintendo use Vue in large-scale production. Nuxt provides the same full-stack capabilities as Next.js.
+
+- **"Angular is dying."** Angular's major rewrites (v2, Ivy renderer, standalone components, Signals) show active investment. Its adoption in enterprise and government projects remains strong.
+
+- **"Virtual DOM is always faster."** Vue 3's compiler optimizes templates at build time, skipping unchanged subtrees without a virtual DOM diff. Svelte and Solid compile away the virtual DOM entirely. The performance story is nuanced.
+
+- **"You must pick one forever."** Skills transfer significantly between these frameworks. Understanding component architecture, reactivity, and state management in any one of them makes learning the others much faster.
+
+## Key Takeaways
+
+- React, Vue, and Angular solve the same core problem — building interactive UIs from composable components — but with fundamentally different tradeoffs in flexibility, convention, and complexity.
+- React maximizes freedom at the cost of decision fatigue. Angular maximizes structure at the cost of a steep learning curve. Vue aims for the middle ground.
+- The "best" choice depends on team size, project complexity, hiring needs, and personal preference — not on benchmark games.
+- All three are production-ready, well-maintained, and backed by large communities. You cannot make a catastrophically wrong choice among them.

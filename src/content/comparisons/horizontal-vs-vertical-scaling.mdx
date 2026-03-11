@@ -1,0 +1,127 @@
+---
+title: "Horizontal vs Vertical Scaling"
+sideA: "Horizontal Scaling"
+sideB: "Vertical Scaling"
+domains:
+  - "software-engineering"
+  - "cloud-devops"
+difficulty: "intermediate"
+publishedAt: "2026-03-10"
+summary: "Vertical scaling makes one machine bigger; horizontal scaling adds more machines — and the right choice depends on your state, your budget, and your actual bottleneck."
+---
+
+Scaling is the act of increasing a system's capacity to handle more load. Vertical scaling (scaling up) means giving a single machine more CPU, RAM, or disk. Horizontal scaling (scaling out) means adding more machines. The industry default is "just scale horizontally," but vertical scaling is underrated, simpler, and often sufficient far longer than people assume.
+
+## Quick Reference
+
+| Aspect | Horizontal Scaling | Vertical Scaling |
+|---|---|---|
+| Approach | Add more machines | Upgrade the existing machine |
+| Theoretical limit | Near-infinite (add nodes) | Hardware ceiling (largest available instance) |
+| State management | Must externalize state | State can live in-process |
+| Complexity | Load balancers, distributed state, consensus | Low — single machine, single process |
+| Cost curve | Linear with traffic (pay per node) | Exponential at the top (premium hardware) |
+| Failure model | Partial — nodes fail independently | Total — machine failure = complete outage |
+| Typical use | Stateless web servers, CDN, MapReduce | Databases, in-memory caches, build servers |
+| Downtime for scaling | Zero (add nodes to pool) | Usually requires restart/migration |
+
+## Horizontal Scaling in Depth
+
+Horizontal scaling adds instances behind a load balancer. When traffic increases, you spin up more copies of your application. When it decreases, you remove them. Cloud auto-scaling groups automate this — define a CPU target of 60%, and AWS adds or removes EC2 instances to maintain it.
+
+The fundamental requirement is **statelessness**. If a user's session data lives in one server's memory, routing them to a different server breaks things. Horizontally scaled applications must externalize all state — sessions go to Redis, files go to S3, data goes to a database. The application instance becomes a pure compute node with no local state.
+
+```
+                    ┌──────────────┐
+                    │ Load Balancer │
+                    └──────┬───────┘
+                 ┌─────────┼─────────┐
+                 ▼         ▼         ▼
+            ┌────────┐ ┌────────┐ ┌────────┐
+            │ App 1  │ │ App 2  │ │ App 3  │
+            └────┬───┘ └────┬───┘ └────┬───┘
+                 │         │         │
+                 ▼         ▼         ▼
+            ┌──────────────────────────────┐
+            │   Shared State (Redis, DB)   │
+            └──────────────────────────────┘
+```
+
+Load balancing strategies matter. **Round-robin** distributes evenly but ignores server load. **Least connections** sends traffic to the least busy server. **Consistent hashing** routes requests for the same key to the same server, enabling local caching without full statefulness.
+
+The cost curve is mostly linear — twice the traffic, roughly twice the instances, roughly twice the cost. But operational complexity grows: you need health checks, graceful draining during deploys, connection pooling to databases (which don't scale horizontally as easily), and distributed caching strategies.
+
+Auto-scaling patterns include:
+- **Target tracking**: maintain a metric at a target value (CPU at 60%)
+- **Step scaling**: add 2 instances when CPU exceeds 70%, add 4 when it exceeds 90%
+- **Scheduled scaling**: scale up before known traffic peaks (Black Friday, product launches)
+- **Predictive scaling**: ML-based forecasting of traffic patterns
+
+## Vertical Scaling in Depth
+
+Vertical scaling upgrades the machine. More CPU cores, more RAM, faster SSDs, better network cards. On AWS, this means moving from a `t3.medium` (2 vCPUs, 4 GB RAM) to an `r6i.16xlarge` (64 vCPUs, 512 GB RAM) or beyond to bare-metal instances with terabytes of memory.
+
+The overwhelming advantage is **simplicity**. Your application code does not change. There is no distributed state to manage, no load balancer to configure, no split-brain scenarios to handle. A single-process application that works on a small machine works identically on a large one — just faster.
+
+Databases benefit enormously from vertical scaling. PostgreSQL on a machine with 256 GB of RAM can keep its entire working set in the buffer pool. Query performance improves dramatically without any application changes, schema redesign, or sharding complexity. Many companies run their primary database on a single vertically-scaled machine for years.
+
+The practical hardware ceiling in major clouds (as of 2026):
+- **AWS**: `u-24tb1.112xlarge` — 448 vCPUs, 24 TB RAM
+- **Azure**: `M-series` — up to 416 vCPUs, 12 TB RAM
+- **GCP**: `m3-megamem` — up to 30 TB RAM
+
+These machines are expensive, but for many workloads, a single large instance is cheaper than the engineering time required to build a horizontally scaled system with equivalent capacity.
+
+The cost curve is nonlinear at the top — the largest instances cost disproportionately more per unit of compute. A machine with 2x the RAM might cost 2.5x the price. But in the common range (4-64 vCPUs), pricing is roughly linear and competitive with horizontal approaches.
+
+## Key Differences
+
+**1. State is the deciding factor.** If your application is stateless (API servers, web frontends, worker processes), horizontal scaling is natural. If your application is inherently stateful (databases, game servers, in-memory analytics), vertical scaling avoids the brutal complexity of distributed state.
+
+**2. Failure modes are different.** A horizontally scaled system survives individual node failures — the load balancer routes around dead nodes. A vertically scaled system is a single point of failure. You mitigate this with replicas (primary/standby database), but automatic failover adds its own complexity.
+
+**3. Database scaling is a different game entirely.** Application servers scale horizontally with ease. Databases do not. Read replicas help with read-heavy workloads. Sharding enables horizontal write scaling but introduces application complexity (shard keys, cross-shard queries, rebalancing). Most applications should vertically scale their database as long as possible.
+
+**4. The operational cost of horizontal scaling is underestimated.** Running 20 instances means 20x the log volume, load balancer configuration, health check tuning, deployment orchestration, and connection pool management. A single large instance has none of this overhead.
+
+**5. Scaling down is easier with horizontal.** Removing instances from a pool is instant and risk-free. Downgrading a machine requires migration or restart. For workloads with highly variable traffic (e-commerce flash sales, event-driven spikes), horizontal scaling with auto-scaling is the clear winner.
+
+**6. Development experience favors vertical.** When developing locally, you are running on a single machine. Code designed for vertical scaling behaves the same locally and in production. Code designed for horizontal scaling may have distributed-system behaviors (eventual consistency, retry storms, split-brain) that are impossible to reproduce on a laptop.
+
+## When to Use Which
+
+**Scale vertically when:**
+- The workload is stateful (databases, caches, search indexes)
+- You are early-stage and engineering time is more expensive than hardware
+- Your traffic is predictable and within the ceiling of available machines
+- The application is not designed for horizontal distribution and rewriting it is impractical
+- You want to delay distributed-system complexity as long as possible
+
+**Scale horizontally when:**
+- The workload is stateless or can be made stateless
+- Traffic is variable and auto-scaling provides cost savings
+- You need fault tolerance — no single machine failure should cause an outage
+- You have exceeded the vertical scaling ceiling for your bottleneck resource
+- The workload is embarrassingly parallel (CDN, static file serving, batch processing)
+
+**Combine both when:**
+- Vertically scale the database while horizontally scaling the application tier
+- Use a large instance as the primary and smaller read replicas for horizontal read scaling
+- Vertically scale individual nodes in a horizontally distributed cluster (larger Kubernetes nodes, bigger Elasticsearch data nodes)
+
+## Common Misconceptions
+
+**"Vertical scaling doesn't scale."** It scales to terabytes of RAM and hundreds of CPU cores in the cloud. StackOverflow handled 1.3 billion page views per month on a remarkably small number of vertically scaled servers. Most applications will never outgrow the largest available instance.
+
+**"Horizontal scaling is always cheaper."** Only at large scale. For small-to-medium workloads, a single large instance avoids the cost of load balancers, additional monitoring, cross-instance networking, and the engineering time to design for statelessness. Total cost of ownership includes engineering hours, not just compute bills.
+
+**"Auto-scaling solves everything."** Auto-scaling has lag — it takes minutes to detect increased load, provision new instances, and pass health checks. For sudden traffic spikes, you need either pre-provisioned capacity or an architecture that can queue and buffer requests during scale-up.
+
+**"You need to choose one or the other."** Most production systems use both. The database is vertically scaled. The application servers are horizontally scaled. The search index runs on a cluster of vertically scaled nodes. Different components in the same system can use different scaling strategies.
+
+## Key Takeaways
+
+- Vertical scaling is simpler, works for stateful systems, and takes you further than most engineers assume. Do not dismiss it as "not scalable."
+- Horizontal scaling requires stateless design, adds operational complexity, but provides fault tolerance and elastic capacity that vertical scaling cannot match.
+- Scale your database vertically as long as possible. Scale your application servers horizontally from the start if they are stateless.
+- The best scaling strategy depends on where the bottleneck is — and measuring that is more important than choosing a philosophy.

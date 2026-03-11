@@ -1,0 +1,112 @@
+---
+title: "Array vs Linked List"
+sideA: "Array"
+sideB: "Linked List"
+domains:
+  - "fundamentals"
+difficulty: "beginner"
+publishedAt: "2026-03-10"
+summary: "Two foundational data structures with fundamentally different memory layouts, each optimized for different access and modification patterns."
+---
+
+Arrays and linked lists are the two most fundamental ways to store a collection of elements. Nearly every other data structure builds on one of them. The choice between them shapes how your program uses memory, how fast it can read or modify data, and how well it plays with modern hardware. Understanding this tradeoff is one of the first steps toward thinking like a systems-aware developer.
+
+## Quick Reference
+
+| Dimension | Array | Linked List |
+|---|---|---|
+| Memory layout | Contiguous block | Scattered nodes + pointers |
+| Access by index | O(1) | O(n) |
+| Search (unsorted) | O(n) | O(n) |
+| Insert at beginning | O(n) | O(1) |
+| Insert at end | O(1) amortized* | O(1) with tail pointer |
+| Insert at middle | O(n) | O(1) after traversal |
+| Delete at beginning | O(n) | O(1) |
+| Delete at end | O(1) | O(n) for singly linked |
+| Memory overhead | Low (just data) | High (pointer per node) |
+| Cache performance | Excellent | Poor |
+
+*Amortized O(1) for dynamic arrays that double capacity on resize.
+
+## Array in Depth
+
+An array stores elements in a single, contiguous block of memory. The address of any element can be computed directly: `base_address + index * element_size`. This arithmetic is why random access is O(1) — the CPU can jump to any position without scanning.
+
+**How dynamic arrays work.** Fixed-size arrays have a predetermined capacity. Dynamic arrays (like Java's `ArrayList`, Python's `list`, C++'s `std::vector`, and JavaScript's `Array`) handle growth by allocating a larger block — typically double the current capacity — and copying all elements over. This occasional copy is expensive, but because it happens exponentially less often, the amortized cost per insertion at the end remains O(1).
+
+**Strengths:**
+- **Blazing fast reads.** Index-based access is a single pointer arithmetic operation.
+- **Cache friendliness.** Because elements sit side by side in memory, accessing one element pulls neighboring elements into the CPU cache line. Sequential iteration over an array is one of the fastest operations a modern processor can perform.
+- **Low memory overhead.** No extra pointers or node wrappers — just the raw data plus a small amount of bookkeeping for length and capacity.
+- **Binary search.** Sorted arrays support O(log n) search, which is impossible with linked lists.
+
+**Weaknesses:**
+- Insertions and deletions in the middle require shifting all subsequent elements — O(n) in the worst case.
+- Resizing a dynamic array involves copying the entire contents.
+- The contiguous memory requirement can be a problem if free memory is fragmented.
+
+## Linked List in Depth
+
+A linked list stores each element in a separate node, where each node contains the data and a pointer (or reference) to the next node. In a doubly linked list, each node also points to the previous node.
+
+```
+Node A        Node B        Node C
+[data|next]→ [data|next]→ [data|null]
+```
+
+**Singly vs doubly linked.** A singly linked list only supports forward traversal. A doubly linked list uses an extra pointer per node but enables O(1) deletion from any position (given a reference to the node) and backward traversal.
+
+**Strengths:**
+- **O(1) insertion and deletion** at any position where you already have a reference to the node. No shifting required — just rewire pointers.
+- **No resizing.** Nodes are allocated individually, so the list grows and shrinks gracefully without copying.
+- **Stable references.** Existing node addresses never change, which matters for certain algorithms and data structures that store external pointers into the list.
+
+**Weaknesses:**
+- Accessing the kth element requires walking from the head — O(n).
+- Each node carries pointer overhead: 8 bytes per pointer on a 64-bit system. A doubly linked list of integers can easily use 3x the memory of an array.
+- Nodes are scattered across the heap, causing frequent cache misses during traversal. In practice, this makes linked list iteration significantly slower than array iteration — often by 10x or more on modern hardware.
+
+## Key Differences
+
+**1. Memory layout determines real-world speed.** Algorithmic complexity tells part of the story, but cache behavior tells the rest. Modern CPUs fetch data in 64-byte cache lines. Iterating over an array loads multiple elements per cache fetch; iterating a linked list typically loads one node per fetch with a cache miss each time. Benchmarks consistently show arrays outperforming linked lists for sequential access by large margins, even when big-O notation says they should be equivalent.
+
+**2. Insertion cost depends on where.** Arrays excel at appending but struggle with insertion at arbitrary positions. Linked lists excel at splicing elements in or out once you have a pointer to the right spot — but finding that spot still costs O(n) if you are searching by index.
+
+**3. Memory overhead scales differently.** An array of n 32-bit integers uses roughly 4n bytes. A singly linked list of the same data uses at least 12n bytes (4 for data + 8 for a pointer on a 64-bit machine), plus per-node allocation overhead from the memory allocator. For large collections or small element types, this difference is substantial.
+
+**4. Growth strategy.** Dynamic arrays waste memory by over-allocating capacity (up to 2x at the moment of resize). Linked lists use exactly as much memory as they need — but the per-node pointer overhead often exceeds the array's wasted capacity.
+
+**5. Algorithmic suitability.** Certain algorithms map naturally to one structure. Merge sort on linked lists avoids the auxiliary space that array-based merge sort needs. Binary search requires arrays. Deques and LRU caches benefit from doubly linked lists.
+
+## When to Use Which
+
+**Choose an array (or dynamic array) when:**
+- You need fast random access by index
+- You are mostly reading, appending, or iterating sequentially
+- Element count is roughly known in advance, or growth is append-only
+- You want the best cache performance for numerical or data-heavy workloads
+
+**Choose a linked list when:**
+- You need frequent insertions or deletions at the front or middle and already hold a reference to the position
+- You are implementing a structure like an LRU cache, where you combine a hash map with a doubly linked list for O(1) access and eviction
+- Stable node addresses matter (e.g., intrusive data structures in OS kernels)
+- You are working in a domain where worst-case latency matters more than throughput (no resize pauses)
+
+**In most application-level code, arrays win.** This is why `std::vector` is the default container recommendation in C++, why Go slices are arrays, and why Rust's `Vec` is far more common than `LinkedList`. Linked lists shine in systems programming, concurrent data structures, and specialized algorithms.
+
+## Common Misconceptions
+
+**"Linked lists are better for insertion."** Only if you already have a pointer to the insertion point. If you need to find the position first, the traversal cost (plus cache misses) often makes linked list insertion slower in practice than shifting elements in an array.
+
+**"Dynamic arrays are inefficient because of resizing."** The doubling strategy ensures that the average cost per insertion remains O(1). In real applications, the occasional resize is rarely a bottleneck compared to the constant cache advantages arrays provide.
+
+**"Linked lists use less memory because they don't over-allocate."** The pointer overhead per node almost always exceeds the unused capacity at the tail of a dynamic array, especially for small element types like integers or characters.
+
+## Key Takeaways
+
+- Arrays store elements contiguously; linked lists use scattered nodes connected by pointers.
+- Random access is O(1) for arrays, O(n) for linked lists.
+- Linked lists offer O(1) insertion and deletion when you have a reference to the node, but finding the node costs O(n).
+- Cache friendliness gives arrays a massive real-world performance advantage for sequential operations.
+- Dynamic arrays (ArrayList, vector, list) are the default choice in most languages for most problems.
+- Linked lists remain valuable for LRU caches, OS schedulers, and algorithms that need stable node references or constant-time splicing.

@@ -1,0 +1,110 @@
+---
+title: "Process vs Thread"
+sideA: "Process"
+sideB: "Thread"
+domains:
+  - "operating-systems"
+difficulty: "intermediate"
+publishedAt: "2026-03-10"
+summary: "Understanding the fundamental difference between processes and threads — memory isolation, scheduling, and when each model wins."
+---
+
+Every running program is either a process or lives inside one as a thread. Getting the distinction right affects how you design concurrent software, how you handle failures, and how much memory your system consumes. This comparison strips away the hand-waving and gets into what the OS actually does.
+
+## Quick Reference
+
+| Aspect | Process | Thread |
+|---|---|---|
+| Memory space | Own isolated address space | Shared within parent process |
+| Creation cost | Heavy (fork + copy/COW page tables) | Light (new stack + register set) |
+| Context switch cost | Expensive (TLB flush, page table swap) | Cheaper (same address space) |
+| Communication | IPC: pipes, sockets, shared memory | Direct shared memory access |
+| Fault isolation | Strong — crash doesn't affect others | Weak — one thread can crash the process |
+| OS visibility | Scheduled independently by kernel | Kernel threads scheduled; user threads may not be |
+| Typical overhead | 1–10 MB baseline per process | 1–8 KB per thread (stack only) |
+
+## Process in Depth
+
+A process is the OS's unit of resource ownership. When you launch a program, the kernel creates a new process with its own virtual address space, file descriptor table, signal handlers, and security context. On Linux, `fork()` creates a child process by duplicating the parent. Modern kernels use copy-on-write (COW) so the physical memory pages are shared until one side writes — but the page table entries themselves must still be duplicated, and that cost is real.
+
+Processes communicate through Inter-Process Communication (IPC): pipes, Unix domain sockets, TCP sockets, shared memory segments (`mmap` or System V shm), or message queues. Every IPC mechanism adds serialization overhead and requires explicit coordination.
+
+The key advantage is **fault isolation**. If a child process segfaults, the parent survives. Chrome moved to a multi-process architecture specifically for this — one tab crashing doesn't bring down the browser. Erlang's entire philosophy is built on process isolation (though Erlang "processes" are VM-level, not OS-level).
+
+Context switching between processes is expensive because the CPU must flush the Translation Lookaside Buffer (TLB) and load a new page table base register (CR3 on x86). This invalidates cached virtual-to-physical address translations, causing a burst of TLB misses afterward.
+
+## Thread in Depth
+
+A thread is the OS's unit of execution scheduling. Multiple threads within a process share the same address space, heap, global variables, and file descriptors. Each thread gets its own stack, program counter, and register state.
+
+On Linux, threads and processes are both implemented as `task_struct` — the `clone()` system call with `CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SIGHAND` flags creates what we call a thread. POSIX threads (pthreads) wrap this. On Windows, `CreateThread()` serves the same purpose.
+
+Shared memory is both the advantage and the danger. Threads can exchange data by writing to the same heap location — no serialization, no copies. But this means every shared variable is a potential data race. You need mutexes, atomics, or lock-free data structures to stay correct.
+
+```c
+// Shared state between threads — needs synchronization
+static int counter = 0;
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+
+void *increment(void *arg) {
+    for (int i = 0; i < 1000000; i++) {
+        pthread_mutex_lock(&lock);
+        counter++;
+        pthread_mutex_unlock(&lock);
+    }
+    return NULL;
+}
+```
+
+Thread creation is fast — the kernel allocates a stack (typically 1–8 MB, configurable) and a new set of registers. No page tables are duplicated.
+
+## Key Differences
+
+**1. Memory isolation determines your failure mode.** A buffer overflow in one thread corrupts the entire process. In a multi-process design, that corruption is contained. Choose processes when untrusted code is involved (sandboxing, plugin systems).
+
+**2. Communication cost differs by orders of magnitude.** Thread-to-thread communication through shared memory can be a single atomic operation (nanoseconds). Process-to-process communication through a pipe involves two system calls and a kernel buffer copy (microseconds). For high-throughput data exchange, threads win decisively.
+
+**3. The GIL makes this language-dependent.** In CPython, the Global Interpreter Lock means only one thread executes Python bytecode at a time. CPU-bound Python work gets no benefit from threads — you must use `multiprocessing` to achieve true parallelism. This is a language implementation detail, not an OS-level truth.
+
+**4. Scalability ceiling differs.** You can run thousands of threads in a process (though stack memory adds up), but running thousands of processes hits kernel limits and memory overhead sooner. Go and Erlang sidestep this with lightweight green threads/processes mapped onto a smaller number of OS threads.
+
+**5. Debugging complexity scales with sharing.** Multi-threaded bugs (races, deadlocks, priority inversion) are notoriously hard to reproduce because they depend on scheduling order. Multi-process bugs are more deterministic because interactions are explicit through IPC.
+
+**6. Security boundaries.** Processes have separate UIDs, capabilities, and seccomp filters. Threads share everything. If you need privilege separation (like OpenSSH does between the network-facing process and the privileged auth process), you need separate processes.
+
+## When to Use Which
+
+**Use processes when:**
+- Running untrusted or crash-prone code (browser tabs, plugin hosts)
+- You need security isolation (privilege separation, sandboxing)
+- Working in CPython and need CPU parallelism
+- Building a system where components should survive independent failures
+- Deploying across multiple machines (processes map naturally to distributed systems)
+
+**Use threads when:**
+- Tasks share large datasets that would be expensive to copy or serialize
+- You need low-latency communication between concurrent tasks
+- The work is I/O-bound and you want to overlap waiting (even in Python, threads work fine for I/O)
+- Memory is constrained and you cannot afford per-process overhead
+
+**Use async/event loops when:**
+- You have thousands of concurrent I/O-bound tasks (connections, HTTP requests)
+- Thread-per-connection overhead is too high
+- The work involves minimal CPU and heavy waiting
+
+## Common Misconceptions
+
+**"Threads are always faster than processes."** Not true. On Linux with COW, forking is fast, and the TLB flush cost matters less on modern CPUs with PCID (Process-Context Identifiers) that avoid full flushes. Measure, don't assume.
+
+**"Multi-threaded code is automatically parallel."** Only if the runtime allows it. The GIL in CPython, the old GIL in Ruby MRI, and single-threaded event loops all use threads for concurrency without parallelism.
+
+**"Processes can't share memory."** They absolutely can — `mmap` with `MAP_SHARED`, System V shared memory, and memory-mapped files all allow processes to share memory regions. You just have to set it up explicitly.
+
+**"More threads equals more throughput."** Past the number of CPU cores, adding threads to CPU-bound work adds scheduling overhead and cache contention. Throughput can actually decrease.
+
+## Key Takeaways
+
+- Processes own resources (memory, files, security context); threads share them within a process.
+- Fault isolation is the strongest argument for processes; low-overhead communication is the strongest argument for threads.
+- The right choice depends on your failure model, your language runtime, and your data-sharing patterns — not on a universal rule.
+- Modern systems often combine both: a multi-process architecture where each process uses a thread pool internally (Nginx, Chromium, many game engines).

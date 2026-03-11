@@ -1,0 +1,125 @@
+---
+title: "TCP vs UDP: Reliable Streams vs Fast Datagrams"
+sideA: "TCP"
+sideB: "UDP"
+domains:
+  - "networking"
+difficulty: "beginner"
+publishedAt: "2026-03-10"
+summary: "TCP guarantees reliable, ordered delivery over a persistent connection; UDP trades those guarantees for minimal latency and overhead."
+---
+
+Every byte that crosses a network rides on one of two transport-layer protocols: TCP or UDP. They sit at the same layer of the networking stack but make fundamentally different trade-offs. TCP prioritizes correctness — every packet arrives, in order, or the sender retransmits. UDP prioritizes speed — packets are fired and forgotten, and the application decides what to do if some go missing. Understanding when each trade-off matters is one of the most practical things a software engineer can learn about networking.
+
+## Quick Reference
+
+| Feature | TCP | UDP |
+|---|---|---|
+| **Connection type** | Connection-oriented (stateful) | Connectionless (stateless) |
+| **Reliability** | Guaranteed delivery with retransmission | Best-effort, no retransmission |
+| **Ordering** | Strict in-order delivery | No ordering guarantees |
+| **Flow control** | Yes (sliding window) | None |
+| **Congestion control** | Yes (slow start, AIMD, cubic) | None |
+| **Header size** | 20–60 bytes | 8 bytes |
+| **Handshake** | Three-way (SYN, SYN-ACK, ACK) | None |
+| **Speed** | Higher latency | Lower latency |
+| **Broadcast/multicast** | No | Yes |
+
+## TCP in Depth
+
+TCP (Transmission Control Protocol) establishes a dedicated connection between two endpoints before any data flows. The process begins with the **three-way handshake**:
+
+```
+Client → Server:  SYN          (seq=x)
+Server → Client:  SYN-ACK      (seq=y, ack=x+1)
+Client → Server:  ACK          (ack=y+1)
+```
+
+This handshake adds one full round-trip of latency before useful data can be sent, but it creates a reliable, bidirectional channel.
+
+### Reliability and ordering
+
+TCP assigns a **sequence number** to every byte in the stream. The receiver sends acknowledgment (ACK) packets confirming which bytes arrived. If the sender does not receive an ACK within a timeout window, it **retransmits** the missing segment. This mechanism guarantees that the application receives every byte in exactly the order it was sent.
+
+### Flow and congestion control
+
+TCP uses a **sliding window** for flow control — the receiver advertises how much buffer space it has, preventing the sender from overwhelming it. On top of that, TCP implements **congestion control** algorithms (slow start, congestion avoidance, fast retransmit, fast recovery) that dynamically adjust sending rate based on network conditions. These mechanisms prevent any single connection from saturating a shared link.
+
+### The cost
+
+All of this reliability comes at a price. The three-way handshake adds latency to connection setup. Retransmissions introduce variable delay. Head-of-line blocking means that a single lost packet stalls all subsequent packets in the stream until it is recovered. For applications where data must be perfect and complete, this trade-off is worth it. For real-time applications, it can be devastating.
+
+## UDP in Depth
+
+UDP (User Datagram Protocol) is the stripped-down alternative. There is no connection setup, no state tracking, no acknowledgment, and no retransmission. Each UDP packet — called a **datagram** — is an independent unit sent from source to destination with no relationship to any other datagram.
+
+### The header
+
+The UDP header is remarkably simple — just 8 bytes:
+
+```
+ 0      7 8     15 16    23 24    31
++--------+--------+--------+--------+
+|   Source Port    |   Dest Port     |
++--------+--------+--------+--------+
+|     Length       |    Checksum     |
++--------+--------+--------+--------+
+```
+
+Compare this to TCP's minimum 20-byte header (which can grow to 60 bytes with options). Less overhead means more room for payload data in each packet and less processing per packet on both sender and receiver.
+
+### Application-level control
+
+Because UDP provides almost no services, the application is responsible for anything it needs. Want reliability? Build your own acknowledgment and retransmission logic. Want ordering? Add sequence numbers in your application protocol. This gives developers precise control over the trade-offs, which is why many performance-sensitive protocols build custom reliability on top of UDP rather than accepting TCP's one-size-fits-all approach.
+
+### Multicast and broadcast
+
+Unlike TCP, UDP supports **multicast** (sending to a group of hosts) and **broadcast** (sending to all hosts on a subnet). This makes it essential for service discovery protocols like mDNS, streaming to multiple receivers simultaneously, and LAN game discovery.
+
+## Key Differences
+
+1. **Connection overhead.** TCP requires a three-way handshake (one RTT) before data flows. UDP can send data immediately. For short-lived interactions like DNS lookups, that extra round-trip is a significant percentage of total time.
+
+2. **Reliability vs. latency.** TCP retransmits lost packets, which guarantees delivery but introduces unpredictable delays. UDP accepts packet loss, which keeps latency consistent — critical for real-time voice, video, and gaming where a late packet is worse than a lost one.
+
+3. **Head-of-line blocking.** In TCP, a lost packet blocks delivery of all subsequent packets in the stream. UDP datagrams are independent, so a lost packet only affects itself. This distinction was a major motivation behind QUIC.
+
+4. **Resource consumption.** TCP maintains per-connection state (buffers, timers, sequence tracking) on both endpoints. UDP is stateless. A server handling millions of clients — like a DNS resolver — benefits enormously from UDP's lower resource footprint.
+
+5. **Congestion awareness.** TCP's congestion control makes it a good network citizen, automatically backing off when the network is saturated. Raw UDP has no such mechanism, which is why UDP-based protocols must implement their own congestion control to avoid being blocked by ISPs or network equipment.
+
+## When to Use Which
+
+**Choose TCP when:**
+- Data integrity is non-negotiable (file transfers, database replication, email)
+- You need in-order delivery (HTTP, SSH, FTP)
+- You want built-in congestion control without implementing your own
+- The application is request-response with moderate latency tolerance
+
+**Choose UDP when:**
+- Real-time performance matters more than perfect delivery (VoIP, video conferencing, online gaming)
+- You need multicast or broadcast capabilities
+- Messages are small and independent (DNS queries, NTP, DHCP)
+- You are building a custom protocol that needs fine-grained control over reliability (like QUIC)
+
+### QUIC: the best of both worlds
+
+QUIC, the protocol behind HTTP/3, is built on UDP but implements its own reliability, ordering, and congestion control. It eliminates TCP's head-of-line blocking by multiplexing independent streams over a single connection — a lost packet in one stream does not block others. QUIC demonstrates a growing trend: use UDP as a minimal transport substrate and build exactly the semantics you need at the application layer.
+
+## Common Misconceptions
+
+- **"UDP is unreliable, so it is insecure."** Reliability and security are orthogonal. UDP can be used with DTLS (Datagram Transport Layer Security) for encrypted communication. QUIC, built on UDP, has mandatory encryption.
+
+- **"TCP is always slower than UDP."** For bulk data transfers, TCP's congestion control and windowing can achieve higher sustained throughput than a naive UDP implementation. UDP's advantage is in latency, not necessarily throughput.
+
+- **"You should never use UDP for important data."** Many mission-critical systems use UDP with application-level reliability. QUIC, DNS-over-UDP, and real-time trading systems all use UDP as their foundation. The key is understanding what guarantees you need and implementing them deliberately.
+
+- **"TCP guarantees delivery."** TCP guarantees delivery *or notification of failure*. If the network is permanently partitioned, TCP will eventually time out and report an error — it cannot deliver data through a cable that does not exist.
+
+## Key Takeaways
+
+- TCP is connection-oriented with built-in reliability, ordering, and congestion control. It adds latency but guarantees correct delivery.
+- UDP is connectionless and stateless, offering minimal overhead and consistent latency at the cost of no delivery guarantees.
+- The choice between them comes down to whether your application values correctness (TCP) or timeliness (UDP).
+- Modern protocols like QUIC blur the line by building custom reliability on top of UDP, taking the best properties of both.
+- Neither protocol is universally better — the right choice depends entirely on your application's requirements.

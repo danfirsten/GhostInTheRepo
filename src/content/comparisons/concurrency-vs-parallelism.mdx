@@ -1,0 +1,133 @@
+---
+title: "Concurrency vs Parallelism"
+sideA: "Concurrency"
+sideB: "Parallelism"
+domains:
+  - "operating-systems"
+difficulty: "intermediate"
+publishedAt: "2026-03-10"
+summary: "Concurrency is about dealing with multiple things at once; parallelism is about doing multiple things at once — and the distinction changes how you design software."
+---
+
+Rob Pike's famous line — "concurrency is about dealing with lots of things at once; parallelism is about doing lots of things at once" — is quoted constantly but rarely understood deeply. The difference is structural versus executional, and getting it wrong leads to systems that are complex without being fast, or fast without being correct.
+
+## Quick Reference
+
+| Aspect | Concurrency | Parallelism |
+|---|---|---|
+| Core idea | Managing multiple tasks that can overlap | Executing multiple tasks simultaneously |
+| Minimum hardware | 1 CPU core | 2+ CPU cores (or SIMD lanes, GPU cores) |
+| Mechanism | Interleaving via time-slicing or async I/O | True simultaneous execution |
+| Goal | Structure and responsiveness | Throughput and speed |
+| Example | Web server handling 10K connections | Matrix multiplication on 8 cores |
+| Risk | Race conditions, deadlocks | Data races, false sharing, contention |
+| Without the other | Concurrent but not parallel (single-core OS) | Parallel but not concurrent (SIMD on one data set) |
+
+## Concurrency in Depth
+
+Concurrency is a design property of your program. A program is concurrent if it is structured as multiple independent tasks whose execution can overlap — whether or not they actually run at the same time. A single-core CPU running a web server that juggles 10,000 connections is concurrent but not parallel. The kernel's scheduler interleaves the work, giving each task a time slice.
+
+The key insight: concurrency is about **structure**. You decompose a problem into independent pieces that can make progress without waiting for each other to finish in strict sequence.
+
+Three dominant concurrency models exist:
+
+**Threads with shared memory.** The classic POSIX model. Multiple threads run within a process, sharing an address space. Synchronization is explicit (mutexes, semaphores, condition variables). Hard to get right, but well-understood.
+
+**Async/await and event loops.** A single thread multiplexes I/O operations using non-blocking calls and callbacks or coroutines. Node.js, Python's asyncio, and Rust's tokio all follow this pattern. Excellent for I/O-bound workloads.
+
+```python
+import asyncio
+
+async def fetch(url):
+    # This is concurrent, not parallel — one thread, many tasks
+    reader, writer = await asyncio.open_connection(url, 80)
+    writer.write(b"GET / HTTP/1.0\r\nHost: " + url.encode() + b"\r\n\r\n")
+    data = await reader.read(4096)
+    return data
+
+async def main():
+    # These run concurrently, overlapping their I/O waits
+    results = await asyncio.gather(
+        fetch("example.com"),
+        fetch("example.org"),
+    )
+```
+
+**Message passing.** Processes or actors communicate via messages instead of sharing state. Erlang/OTP, Go channels, and Akka follow this model. Eliminates shared mutable state at the cost of serialization overhead.
+
+## Parallelism in Depth
+
+Parallelism is a runtime property. Work is literally executing at the same physical instant on different processing units — CPU cores, SIMD lanes, GPU shader cores, or separate machines. You cannot have parallelism on a single-core machine (ignoring instruction-level parallelism in the CPU pipeline).
+
+Parallelism comes in several forms:
+
+**Data parallelism.** The same operation applied to different chunks of data. GPU shaders processing pixels, NumPy vectorized operations, MapReduce. This is the easiest parallelism to reason about because each unit of work is independent.
+
+**Task parallelism.** Different operations running on different cores. A video encoder might decode frames on one core, apply filters on another, and encode output on a third. Requires careful dependency management.
+
+```go
+func parallelSum(nums []int) int {
+    n := len(nums)
+    mid := n / 2
+
+    ch := make(chan int, 2)
+    // These goroutines execute in parallel on separate OS threads
+    go func() { ch <- sum(nums[:mid]) }()
+    go func() { ch <- sum(nums[mid:]) }()
+
+    return <-ch + <-ch
+}
+```
+
+**Pipeline parallelism.** Stages of a pipeline run in parallel, each processing different items. Like an assembly line — stage 1 handles item N while stage 2 handles item N-1.
+
+Parallelism is subject to Amdahl's Law: your maximum speedup is limited by the serial fraction of your program. If 10% of your work is inherently sequential, you cannot exceed a 10x speedup no matter how many cores you throw at it.
+
+## Key Differences
+
+**1. Concurrency is about correctness; parallelism is about performance.** You make a program concurrent so it can handle multiple tasks without blocking. You make it parallel so it finishes faster. These are orthogonal goals.
+
+**2. You can have concurrency without parallelism.** A single-core machine running an event-driven web server is concurrent (many connections managed simultaneously) but not parallel (only one instruction executes per cycle). Python's asyncio on a single thread is concurrent but never parallel.
+
+**3. You can have parallelism without concurrency.** A SIMD instruction that adds four pairs of integers simultaneously is parallel but not concurrent in the structural sense — it is a single operation, not multiple independent tasks. A GPU computing a matrix product is massively parallel but may not be concurrent if there is only one kernel dispatch.
+
+**4. Go blurs the line deliberately.** Go's goroutines are concurrent by design — you write `go func()` to create a concurrent task. The Go runtime then schedules goroutines onto OS threads, giving you parallelism if `GOMAXPROCS > 1`. You structure concurrently; the runtime executes in parallel.
+
+**5. Async/await is concurrency, not parallelism.** This is the most common point of confusion. `await asyncio.gather(a(), b())` runs a and b concurrently — their I/O can overlap — but if both are CPU-bound, they execute sequentially on a single thread. Adding `async` to your code does not make it parallel.
+
+**6. Erlang's model is both.** Erlang processes are concurrent (millions of lightweight processes communicate via messages). The BEAM VM schedules them across OS threads for parallelism. The programmer thinks only about concurrency; the VM handles parallelism transparently.
+
+## When to Use Which
+
+**Structure your program for concurrency when:**
+- You have multiple I/O-bound tasks (network requests, disk reads, database queries)
+- A user interface must remain responsive while background work happens
+- You are building a server that handles many simultaneous clients
+- Tasks have natural independence and can make progress independently
+
+**Add parallelism when:**
+- You have CPU-bound work that is divisible into independent chunks
+- Profiling shows that a single core is the bottleneck
+- The problem has data-parallel structure (image processing, scientific computing, batch transformations)
+- Amdahl's Law says the serial fraction is small enough for meaningful speedup
+
+**Combine both when:**
+- Building a web server that handles many connections (concurrency) and does compute-heavy processing per request (parallelism)
+- Building a data pipeline where stages run concurrently and individual stages process data in parallel
+
+## Common Misconceptions
+
+**"Async makes my code parallel."** No. Async makes your code concurrent. `await fetch(url)` yields control so other tasks can run during the I/O wait, but all your coroutines share a single thread. For CPU parallelism in Python, you need `multiprocessing` or a C extension that releases the GIL.
+
+**"More cores always means faster."** Only if your workload is parallelizable. A single-threaded algorithm on a 128-core machine uses exactly one core. And parallel overhead (synchronization, communication, cache coherence) can make a parallel version slower than the serial one for small problem sizes.
+
+**"Concurrency always means threads."** Event loops, coroutines, and actor systems are all concurrency models that can run on a single thread. Threads are one tool for concurrency, not the definition of it.
+
+**"If it runs on multiple cores, it's automatically concurrent."** SIMD, GPU kernels, and pipelined CPU execution are parallel but not necessarily concurrent in the software design sense. Concurrency is about how you structure your program, not about what the hardware does.
+
+## Key Takeaways
+
+- Concurrency is a design choice about structuring programs with independently progressing tasks. Parallelism is an execution property about physically simultaneous computation.
+- Async/await gives you concurrency. Multiple cores give you parallelism. They are complementary, not interchangeable.
+- Start by identifying whether your bottleneck is I/O or CPU. I/O-bound problems need concurrency. CPU-bound problems need parallelism. Many real systems need both.
+- The best frameworks (Go, Erlang, Rust's tokio) let you express concurrency in your code and get parallelism from the runtime.

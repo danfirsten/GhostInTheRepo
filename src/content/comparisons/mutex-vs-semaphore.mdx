@@ -1,0 +1,157 @@
+---
+title: "Mutex vs Semaphore"
+sideA: "Mutex"
+sideB: "Semaphore"
+domains:
+  - "operating-systems"
+difficulty: "advanced"
+publishedAt: "2026-03-10"
+summary: "Mutexes enforce exclusive ownership of a resource; semaphores control access counts — and confusing the two causes subtle, dangerous bugs."
+---
+
+Mutexes and semaphores both coordinate concurrent access, but they solve different problems with different semantics. A mutex protects a critical section with strict ownership. A semaphore controls access to a pool of resources by maintaining a count. Using a semaphore as a mutex (or vice versa) works in toy examples and breaks in production. This comparison digs into why.
+
+## Quick Reference
+
+| Aspect | Mutex | Semaphore |
+|---|---|---|
+| Core abstraction | Lock with ownership | Counter with wait/signal |
+| Values | Locked or unlocked (binary) | 0 to N (counting) |
+| Ownership | Only the locking thread can unlock | Any thread can signal |
+| Purpose | Mutual exclusion for a critical section | Limiting concurrent access to N resources |
+| Deadlock risk | Yes (lock ordering, nested locks) | Yes (miscounted signals, circular waits) |
+| Priority inversion | Solvable via priority inheritance | No standard solution |
+| POSIX API | `pthread_mutex_t` | `sem_t` |
+| Typical use | Protecting shared data structures | Producer-consumer queues, connection pools |
+
+## Mutex in Depth
+
+A mutex (mutual exclusion) is a lock that ensures only one thread executes a critical section at a time. The defining property is **ownership**: the thread that locks the mutex must be the thread that unlocks it. This ownership rule enables priority inheritance — if a high-priority thread is waiting for a mutex held by a low-priority thread, the kernel can temporarily boost the holder's priority to avoid priority inversion.
+
+```c
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+int shared_balance = 0;
+
+void deposit(int amount) {
+    pthread_mutex_lock(&lock);      // Acquire — this thread owns the lock
+    shared_balance += amount;        // Critical section
+    pthread_mutex_unlock(&lock);     // Release — only the owner can do this
+}
+```
+
+Mutexes come in variants. A **recursive mutex** (or reentrant mutex) allows the same thread to lock it multiple times without deadlocking — it maintains a count and requires an equal number of unlocks. An **error-checking mutex** returns an error if a thread tries to lock a mutex it already holds, instead of deadlocking. A **robust mutex** can detect if the owning thread died while holding the lock.
+
+On modern x86 hardware, an uncontended mutex lock is a single atomic compare-and-swap instruction — roughly 15-25 nanoseconds. When contended, the thread enters a wait queue and the cost jumps to microseconds due to the context switch.
+
+Most implementations use a **futex** (fast userspace mutex) on Linux: the uncontended path stays entirely in userspace, and only contended cases invoke a system call to sleep and wake threads.
+
+## Semaphore in Depth
+
+A semaphore maintains an integer count and supports two atomic operations: **wait** (decrement, block if zero) and **signal** (increment, wake a waiting thread). Dijkstra called these P (proberen, "to try") and V (verhogen, "to raise").
+
+A **binary semaphore** has a maximum value of 1. A **counting semaphore** can go up to N, controlling access to N identical resources.
+
+```c
+#include <semaphore.h>
+
+sem_t pool_slots;
+
+void init_pool(int max_connections) {
+    sem_init(&pool_slots, 0, max_connections);  // Start with N permits
+}
+
+void use_connection() {
+    sem_wait(&pool_slots);     // Decrement — block if 0
+    // ... use a connection from the pool ...
+    sem_post(&pool_slots);     // Increment — any thread can signal
+}
+```
+
+The critical distinction: **semaphores have no ownership**. Any thread can call `sem_post()`, not just the one that called `sem_wait()`. This makes semaphores ideal for signaling between threads — one thread produces, another consumes.
+
+The classic producer-consumer pattern uses two semaphores:
+
+```c
+sem_t empty_slots;  // Initialized to buffer_size
+sem_t full_slots;   // Initialized to 0
+
+void producer(void *item) {
+    sem_wait(&empty_slots);   // Wait for space
+    buffer_add(item);
+    sem_post(&full_slots);    // Signal data available
+}
+
+void *consumer() {
+    sem_wait(&full_slots);    // Wait for data
+    void *item = buffer_remove();
+    sem_post(&empty_slots);   // Signal space available
+    return item;
+}
+```
+
+Note that the producer signals `full_slots` and the consumer signals `empty_slots` — cross-thread signaling with no ownership requirement. A mutex cannot express this pattern.
+
+## Key Differences
+
+**1. Ownership is the fundamental dividing line.** A mutex has an owner; a semaphore does not. This means the kernel can implement priority inheritance for mutexes but not for semaphores. If you are protecting a data structure from concurrent access, use a mutex — the ownership semantics give you safety guarantees the semaphore cannot.
+
+**2. A binary semaphore is not a mutex.** They look similar — both are binary, both provide mutual exclusion — but a binary semaphore allows thread A to lock and thread B to unlock, which a mutex forbids. This makes binary semaphores suitable for signaling ("I'm done, you can proceed") but inferior for protecting critical sections.
+
+**3. Counting semantics are unique to semaphores.** Mutexes don't have a concept of "allow up to N concurrent accessors." If you need to limit parallelism — a database connection pool with 10 connections, a thread pool with 4 workers — a counting semaphore is the right primitive.
+
+**4. Deadlock patterns differ.** Mutex deadlocks typically arise from inconsistent lock ordering (thread 1 locks A then B; thread 2 locks B then A). Semaphore deadlocks arise from miscounted signals — forgetting a `sem_post` in an error path, or signaling the wrong semaphore.
+
+**5. Priority inversion is solvable for mutexes.** Because the kernel knows which thread owns the mutex, it can apply priority inheritance (boost the holder's priority to that of the highest-priority waiter). Semaphores have no owner, so the kernel cannot determine which thread to boost. This is why real-time systems strongly prefer mutexes.
+
+**6. Condition variables pair with mutexes, not semaphores.** The `pthread_cond_wait()` function atomically releases a mutex and sleeps, then reacquires it on wakeup. This mutex-plus-condition-variable pattern is the standard way to implement complex waiting conditions. There is no semaphore equivalent.
+
+```c
+pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+int ready = 0;
+
+// Waiting thread
+pthread_mutex_lock(&mtx);
+while (!ready)
+    pthread_cond_wait(&cond, &mtx);  // Releases mtx, sleeps, reacquires
+// ... proceed ...
+pthread_mutex_unlock(&mtx);
+```
+
+## When to Use Which
+
+**Use a mutex when:**
+- You are protecting a shared data structure (hash map, linked list, counter)
+- Exactly one thread should access a resource at a time
+- You need priority inheritance for real-time guarantees
+- You want to pair with a condition variable for complex signaling
+- Ownership semantics help catch bugs (unlocking from the wrong thread is an error)
+
+**Use a semaphore when:**
+- You are controlling access to a pool of N identical resources
+- You need cross-thread signaling where the signaler and waiter are different threads
+- You are implementing the producer-consumer pattern
+- You need to limit concurrency (e.g., at most 4 threads doing disk I/O)
+
+**Use a reader-writer lock when:**
+- Many threads read, few threads write
+- Read operations vastly outnumber writes
+- You want concurrent reads but exclusive writes
+- `pthread_rwlock_t` gives you this directly — no need to build it from primitives
+
+## Common Misconceptions
+
+**"A semaphore initialized to 1 is the same as a mutex."** Functionally similar in simple cases, but semantically different. A binary semaphore lacks ownership, so it cannot support priority inheritance, cannot detect recursive locking, and cannot catch misuse where a different thread unlocks. Production RTOS documentation (FreeRTOS, VxWorks) explicitly warns against conflating them.
+
+**"Semaphores are obsolete."** They have fallen out of favor in application code because mutexes with condition variables are more flexible. But semaphores remain the right tool for resource counting and are heavily used in kernel code, I/O schedulers, and embedded systems.
+
+**"Mutexes are slow because they use system calls."** Uncontended mutexes on Linux (futex-based) execute entirely in userspace — a single atomic instruction. The system call only happens when a thread actually needs to sleep. An uncontended `pthread_mutex_lock` is roughly the same cost as an atomic compare-and-swap.
+
+**"You can avoid deadlocks by using semaphores instead of mutexes."** Deadlocks come from circular wait dependencies, not from the choice of primitive. Semaphores can deadlock just as easily. The fix is disciplined resource ordering, not changing the synchronization tool.
+
+## Key Takeaways
+
+- Mutexes provide mutual exclusion with ownership — the locker must be the unlocker. Semaphores provide access counting without ownership.
+- Use mutexes for protecting shared state. Use semaphores for resource pools and cross-thread signaling.
+- The ownership distinction enables priority inheritance for mutexes, which matters in real-time systems.
+- In modern application development, mutexes plus condition variables cover most synchronization needs. Semaphores shine in resource-limiting scenarios and kernel/embedded code.

@@ -1,0 +1,138 @@
+---
+title: "Event-Driven vs Request-Driven Architecture"
+sideA: "Event-Driven"
+sideB: "Request-Driven"
+domains:
+  - "software-engineering"
+difficulty: "advanced"
+publishedAt: "2026-03-10"
+summary: "An in-depth comparison of event-driven and request-driven architectures covering coupling, consistency, scalability, debugging, and when the complexity of events pays off."
+---
+
+Every distributed system must answer a fundamental question: how do components communicate? In a request-driven architecture, one service directly calls another and waits for a response. In an event-driven architecture, services emit events that other services consume asynchronously. This choice cascades through your entire system — affecting coupling, consistency, scalability, and the difficulty of debugging production issues.
+
+## Quick Reference
+
+| Aspect | Request-Driven | Event-Driven |
+|---|---|---|
+| Communication | Synchronous (HTTP, gRPC) | Asynchronous (events via broker) |
+| Coupling | Temporal and spatial coupling | Loose coupling (producer ignores consumers) |
+| Data consistency | Strong (immediate response) | Eventual consistency |
+| Error handling | Direct error propagation | Dead letter queues, retry policies |
+| Scaling | Scale individual services | Scale consumers independently per event type |
+| Debugging | Follow request chain (tracing) | Follow event chain (correlation IDs) |
+| Latency | Predictable per-request | Variable; may be near-instant or delayed |
+| Infrastructure | Load balancers, API gateways | Message brokers (Kafka, RabbitMQ, SQS) |
+
+## Request-Driven in Depth
+
+In a request-driven architecture, service A sends a request to service B and blocks (or awaits) until it receives a response. This is the model behind REST APIs, gRPC calls, and traditional microservice communication.
+
+```
+Client → API Gateway → Order Service → Payment Service → Inventory Service
+                                    ← response ←         ← response ←
+```
+
+The flow is intuitive. A client places an order. The order service calls the payment service to charge the card, then calls the inventory service to reserve stock. If either fails, the order service returns an error to the client. The entire transaction completes within one request lifecycle.
+
+Request-driven architectures offer **strong consistency by default**. When the payment service responds with success, you know the charge went through. There is no window of uncertainty, no need to reconcile later. This simplicity is enormously valuable for systems where correctness matters more than throughput.
+
+The cost is **coupling**. Service A must know the network address of service B (spatial coupling). Service B must be available when service A calls it (temporal coupling). If the payment service is down, orders fail — even if the client would be happy to receive a confirmation now and be charged later. As the service graph grows, a single slow or failing service can cascade failures through the entire system.
+
+```python
+# Request-driven: direct synchronous calls
+async def place_order(order: Order) -> OrderResult:
+    payment = await payment_service.charge(order.customer_id, order.total)
+    if not payment.success:
+        raise PaymentFailedError(payment.error)
+
+    reservation = await inventory_service.reserve(order.items)
+    if not reservation.success:
+        await payment_service.refund(payment.transaction_id)
+        raise InventoryError(reservation.error)
+
+    return await order_repository.save(order, payment, reservation)
+```
+
+## Event-Driven in Depth
+
+In an event-driven architecture, services communicate by publishing and consuming events through a message broker. When an order is placed, the order service publishes an `OrderCreated` event. The payment service, inventory service, and notification service each consume that event independently and act on it.
+
+```
+Order Service → [OrderCreated] → Message Broker
+                                    ├→ Payment Service → [PaymentProcessed] →
+                                    ├→ Inventory Service → [StockReserved] →
+                                    └→ Notification Service → (sends email)
+```
+
+The producer does not know which services consume the event, or even how many. This **decoupling** is the defining advantage. You can add a new analytics service that consumes `OrderCreated` events without modifying the order service. You can replace the payment service without touching any producer. Services evolve independently.
+
+```typescript
+// Event-driven: publish and consume
+// Producer
+async function placeOrder(order: Order): Promise<void> {
+  await orderRepository.save(order);
+  await broker.publish('order.created', {
+    orderId: order.id,
+    customerId: order.customerId,
+    items: order.items,
+    total: order.total,
+    timestamp: Date.now(),
+  });
+}
+
+// Consumer (separate service)
+broker.subscribe('order.created', async (event) => {
+  const result = await processPayment(event.customerId, event.total);
+  await broker.publish('payment.processed', {
+    orderId: event.orderId,
+    success: result.success,
+    transactionId: result.transactionId,
+  });
+});
+```
+
+Event-driven architectures often pair with **event sourcing** — storing every state change as an immutable event rather than overwriting current state. Instead of a `orders` table with the latest status, you store a sequence of events: `OrderCreated`, `PaymentProcessed`, `ItemShipped`. The current state is derived by replaying events. This provides a complete audit trail and enables temporal queries ("what did this order look like yesterday?").
+
+**CQRS (Command Query Responsibility Segregation)** naturally complements events. Write operations append events to an event store. Read operations query materialized views that are asynchronously projected from those events. This lets you scale reads and writes independently and optimize each for its access pattern.
+
+The price is **eventual consistency**. After `OrderCreated` is published, there is a window where the order exists but payment has not been processed. Your UI, API, and business logic must handle this intermediate state gracefully. Debugging is harder too — instead of a single request trace, you follow events across multiple services, each with its own timing and failure modes.
+
+## Key Differences
+
+1. **Coupling.** Request-driven creates direct dependencies between services. Event-driven decouples producers from consumers, enabling independent deployment and scaling.
+
+2. **Consistency model.** Request-driven gives you immediate consistency — the response confirms the outcome. Event-driven gives you eventual consistency — the outcome is confirmed later, potentially across multiple services.
+
+3. **Failure isolation.** In request-driven systems, a downstream failure cascades upstream. In event-driven systems, the broker buffers events, and a failing consumer can catch up when it recovers. The system degrades gracefully rather than failing abruptly.
+
+4. **Scaling patterns.** Request-driven scales by adding instances behind a load balancer. Event-driven scales by adding consumers to a consumer group, with the broker partitioning events across them. Event-driven scaling is more granular — you can scale the payment consumer independently of the notification consumer.
+
+5. **Debugging complexity.** A request-driven trace shows one linear path. An event-driven trace fans out across consumers, each with independent timing. Correlation IDs, distributed tracing (OpenTelemetry), and event visualization tools are essential.
+
+6. **Infrastructure requirements.** Request-driven needs load balancers and service discovery. Event-driven adds a message broker (Kafka, RabbitMQ, AWS SQS/SNS) — a critical piece of infrastructure that must be highly available, monitored, and operationally understood.
+
+## When to Use Which
+
+**Choose request-driven when:** you need immediate responses, strong consistency, and the service graph is simple. User-facing API calls that must return a definitive result (login, payment confirmation, data retrieval) are naturally request-driven.
+
+**Choose event-driven when:** you need loose coupling, independent scalability, and can tolerate eventual consistency. Background processing (email notifications, analytics, audit logging), choreography across many services, and systems where new consumers are frequently added all benefit from events.
+
+**Combine both when:** most production systems do. The API gateway handles synchronous requests from clients. Internally, some operations are dispatched as events for asynchronous processing. The order API returns a confirmation immediately (request-driven) and fires events for fulfillment, notification, and analytics (event-driven).
+
+## Common Misconceptions
+
+**"Event-driven means faster."** Events add latency — the broker introduces a hop, and consumers process asynchronously. Event-driven means more scalable and more decoupled, not faster. For a single request, direct calls are faster.
+
+**"Eventual consistency is always a problem."** Many business processes are naturally eventual. When you order from an online store, your credit card is not charged the moment you click "Buy" — it is authorized immediately and charged when the item ships. Modeling this as events reflects reality.
+
+**"You need Kafka for event-driven architecture."** Kafka is excellent for high-throughput event streaming, but RabbitMQ, AWS SQS, Google Pub/Sub, and even Redis Streams are valid choices depending on your throughput, ordering, and durability requirements. Choose based on your actual needs, not hype.
+
+**"Event sourcing and event-driven are the same thing."** Event sourcing is a data storage pattern (persist events instead of current state). Event-driven is a communication pattern (services talk through events). You can use either independently, though they pair well.
+
+## Key Takeaways
+
+- Request-driven architecture is simpler, offers immediate consistency, and is the natural choice for synchronous user-facing interactions. Event-driven architecture offers loose coupling, independent scaling, and graceful degradation at the cost of eventual consistency and debugging complexity.
+- Most systems combine both patterns. Use synchronous calls where the user needs an immediate answer. Use events where decoupling and resilience matter more than immediacy.
+- Event-driven architecture requires investment in infrastructure (brokers), observability (correlation IDs, distributed tracing), and a team that understands eventual consistency. Adopt it when the benefits justify the operational overhead.
+- Start request-driven. Introduce events where coupling pain or scaling needs demand it. Premature event-driven architecture is one of the most common sources of accidental complexity in distributed systems.

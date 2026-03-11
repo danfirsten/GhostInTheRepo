@@ -1,0 +1,154 @@
+---
+title: "Recursion vs Iteration"
+sideA: "Recursion"
+sideB: "Iteration"
+domains:
+  - "fundamentals"
+difficulty: "beginner"
+publishedAt: "2026-03-10"
+summary: "Two approaches to repetition — one calls itself, the other loops, and the choice affects readability, performance, and stack safety."
+---
+
+Every algorithm that repeats work faces a fundamental choice: should the function call itself (recursion), or should it loop explicitly (iteration)? Mathematically, the two are equivalent — anything one can do, the other can too. In practice, they differ in readability, performance, memory usage, and how naturally they express different problem structures. Knowing when each approach shines makes you a more effective problem solver.
+
+## Quick Reference
+
+| Dimension | Recursion | Iteration |
+|---|---|---|
+| Mechanism | Function calls itself | Loop construct (for, while) |
+| State storage | Call stack (implicit) | Loop variables (explicit) |
+| Memory usage | O(n) stack frames for depth n | O(1) typically |
+| Stack overflow risk | Yes, at deep recursion | No |
+| Tail call optimization | Language-dependent | Not applicable |
+| Readability | Often cleaner for recursive structures | Often cleaner for linear processes |
+| Performance | Function call overhead per step | Minimal overhead per step |
+| Debugging | Longer stack traces | Simpler control flow |
+
+## Recursion in Depth
+
+A recursive function solves a problem by breaking it into smaller instances of the same problem, calling itself on each subproblem, and combining the results. Every recursive function needs a base case (the stopping condition) and a recursive case (the self-call that moves toward the base case).
+
+```python
+def factorial(n):
+    if n <= 1:        # base case
+        return 1
+    return n * factorial(n - 1)  # recursive case
+```
+
+**How the call stack works.** Each recursive call creates a new stack frame containing local variables, parameters, and the return address. For `factorial(5)`, five frames stack up before the base case triggers and they begin collapsing. This implicit state storage is both recursion's power and its limitation.
+
+**Where recursion shines:**
+- **Tree traversal.** Trees are recursively defined (a node with subtrees), so recursive traversal reads like a direct translation of the structure: process the node, recurse on children.
+- **Divide-and-conquer.** Merge sort, quicksort, and binary search split problems in half and recurse on each piece. The recursive structure mirrors the algorithm's logic.
+- **Graph exploration.** DFS is naturally recursive — explore a neighbor, recurse, backtrack.
+- **Mathematical definitions.** Fibonacci, factorials, combinatorics, and many mathematical sequences are defined recursively. Recursive code mirrors the definition.
+- **Backtracking.** N-Queens, Sudoku solvers, and permutation generators use recursion to explore possibilities and undo choices cleanly.
+
+**Strengths:**
+- Expressive and concise for problems with recursive structure
+- Implicit backtracking through the call stack
+- Easier to prove correctness via structural induction
+
+## Iteration in Depth
+
+Iteration uses loop constructs — `for`, `while`, `do-while` — to repeat a block of code. State is maintained explicitly in variables that update each cycle.
+
+```python
+def factorial(n):
+    result = 1
+    for i in range(2, n + 1):
+        result *= i
+    return result
+```
+
+**Where iteration shines:**
+- **Linear processes.** Summing an array, scanning a string, counting occurrences — these are naturally sequential and map directly to loops.
+- **Performance-critical code.** No function call overhead means tighter inner loops. In hot paths, this matters.
+- **Bounded repetition.** When you know how many times to repeat (iterate over a collection, run n steps), a `for` loop communicates intent clearly.
+- **State machines.** Parsers, protocol handlers, and game loops maintain explicit state across iterations.
+
+**Strengths:**
+- No stack overflow risk — loop state lives in a fixed number of variables
+- Lower memory overhead (no stack frames accumulating)
+- Often faster due to avoiding function call setup and teardown
+- Easier to reason about memory usage
+
+## Key Differences
+
+**1. Memory model.** Recursion implicitly allocates a stack frame per call. For a recursion depth of n, that is O(n) memory on the call stack. Iteration typically uses O(1) extra memory — just the loop variables. This means recursive Fibonacci with depth 10,000 risks a stack overflow, while an iterative version runs comfortably.
+
+**2. Function call overhead.** Each recursive call involves pushing parameters, local variables, and a return address onto the stack, then popping them on return. Modern CPUs handle this efficiently, but in tight loops executed millions of times, the cumulative overhead is measurable. Iterative code avoids this entirely.
+
+**3. Tail call optimization (TCO).** A tail-recursive function is one where the recursive call is the very last operation — nothing happens after it returns. Some languages (Scheme, Haskell, Scala with `@tailrec`, Elixir) optimize tail calls by reusing the current stack frame, eliminating the O(n) memory cost and making recursion as efficient as iteration. Crucially, many popular languages do not support TCO:
+
+| Language | TCO Support |
+|---|---|
+| Scheme, Elixir, Haskell | Yes, guaranteed |
+| Scala | Yes, with @tailrec annotation |
+| JavaScript | Specified in ES6, but only Safari implements it |
+| Python, Java, C#, Go | No |
+| C/C++ | Compiler-dependent (often yes with -O2) |
+
+**4. Expressiveness vs explicitness.** Recursive tree traversal is typically 3-5 lines. An iterative version with an explicit stack is 10-15 lines and requires manual stack management. Conversely, iterating over an array with a loop is clearer than a recursive version that passes indices as parameters.
+
+**5. Debugging experience.** Deep recursion produces long stack traces that can be hard to navigate. Iterative code has a flatter call stack, and you can inspect loop variables at any breakpoint. However, recursive code's stack trace can also be informative — each frame shows the subproblem being solved.
+
+**6. Converting between them.** Any recursion can be converted to iteration by using an explicit stack. The transformation is mechanical: replace the function call with a push, replace the return with a pop, and manage state in a loop. This is exactly how iterative DFS works — it replaces the call stack with a data structure stack.
+
+```python
+# Recursive DFS
+def dfs(node, visited):
+    visited.add(node)
+    for neighbor in node.neighbors:
+        if neighbor not in visited:
+            dfs(neighbor, visited)
+
+# Iterative DFS (equivalent)
+def dfs_iterative(start):
+    stack = [start]
+    visited = set()
+    while stack:
+        node = stack.pop()
+        if node in visited:
+            continue
+        visited.add(node)
+        for neighbor in node.neighbors:
+            if neighbor not in visited:
+                stack.append(neighbor)
+```
+
+## When to Use Which
+
+**Choose recursion when:**
+- The problem has natural recursive structure (trees, nested data, divide-and-conquer)
+- You need implicit backtracking (puzzle solvers, permutation generators)
+- Clarity matters more than raw performance
+- Recursion depth is bounded and manageable (e.g., balanced tree depth is O(log n))
+- Your language supports tail call optimization and you can write tail-recursive functions
+
+**Choose iteration when:**
+- The process is naturally sequential (scanning, accumulating, counting)
+- Stack depth could be large or unbounded (processing a list of a million elements)
+- Performance is critical and you are in a hot path
+- Your language lacks tail call optimization
+- You need fine-grained control over the execution order
+
+**Practical rule of thumb.** If you are working with trees or recursive data structures, start with recursion for clarity. If the recursion depth could exceed a few thousand and your language lacks TCO, convert to an iterative version with an explicit stack. For linear processes, always prefer iteration.
+
+## Common Misconceptions
+
+**"Recursion is always slower."** For problems with recursive structure, a well-written recursive solution and its iterative equivalent perform nearly identically. The function call overhead is real but small. The actual performance difference usually matters only in extremely tight loops or when recursion depth creates memory pressure.
+
+**"Iteration can't handle recursive problems."** Any recursive algorithm can be mechanically converted to iteration using an explicit stack. The result is sometimes less elegant, but it is always possible and sometimes necessary for stack safety.
+
+**"Tail call optimization makes all recursion safe."** TCO only applies to tail-recursive functions, where the recursive call is the very last thing the function does. Many naturally recursive algorithms — like tree traversals that process results after both subtree calls — are not tail-recursive and cannot benefit from TCO without restructuring (often using continuation-passing style, which adds complexity).
+
+## Key Takeaways
+
+- Recursion and iteration are mathematically equivalent but differ in readability, memory usage, and performance characteristics.
+- Recursion uses the call stack implicitly; iteration manages state explicitly in variables.
+- Recursion excels for trees, divide-and-conquer, and backtracking. Iteration excels for linear and sequential processes.
+- Stack overflow is the primary practical danger of recursion — always consider the maximum recursion depth.
+- Tail call optimization can eliminate recursion's memory overhead, but support varies widely by language.
+- Any recursive function can be converted to iteration with an explicit stack — a critical skill for production code.
+- Default to whichever is clearer for the problem at hand, then optimize if profiling reveals a bottleneck.

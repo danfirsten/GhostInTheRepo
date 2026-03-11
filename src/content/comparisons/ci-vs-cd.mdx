@@ -1,0 +1,176 @@
+---
+title: "Continuous Integration vs Continuous Delivery vs Continuous Deployment"
+sideA: "Continuous Integration (CI)"
+sideB: "Continuous Delivery / Deployment (CD)"
+domains:
+  - "cloud-devops"
+  - "software-engineering"
+difficulty: "beginner"
+publishedAt: "2026-03-10"
+summary: "CI automatically builds and tests every commit; CD automates the release pipeline, with delivery requiring manual approval and deployment going straight to production."
+---
+
+CI and CD are often mentioned together as "CI/CD," which obscures the fact that they solve different problems and can be adopted independently. Continuous Integration is about catching bugs early by merging and testing code frequently. Continuous Delivery is about making releases reliable and low-risk by automating everything up to production. Continuous Deployment goes one step further — removing the human gate entirely. Understanding where one ends and the next begins helps teams adopt them incrementally instead of treating CI/CD as a single monolithic practice.
+
+## Quick Reference
+
+| Aspect | Continuous Integration | Continuous Delivery | Continuous Deployment |
+|---|---|---|---|
+| **Goal** | Catch bugs early, keep code mergeable | Make releases reliable and repeatable | Ship every change to production automatically |
+| **Trigger** | Every commit / pull request | Successful CI + manual approval | Successful CI (no manual step) |
+| **End state** | Tested, merged code | Release-ready artifact in staging | Change live in production |
+| **Human gate** | Code review (optional) | Explicit release approval | None — fully automated |
+| **Risk level** | Low (testing only) | Medium (staging deployments) | Requires mature testing and monitoring |
+| **Adoption order** | First | Second | Third (optional) |
+
+## Continuous Integration in Depth
+
+Continuous Integration is the practice of merging code changes into a shared branch frequently — at least daily — with each merge triggering an automated build and test suite. The goal is to detect integration problems early, when they're small and cheap to fix, rather than during a painful merge weeks later.
+
+A CI pipeline typically runs on every push or pull request:
+
+```yaml
+# .github/workflows/ci.yml — GitHub Actions example
+name: CI
+on: [push, pull_request]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npm test -- --coverage
+
+      - name: Integration tests
+        run: npm run test:integration
+
+      - name: Build
+        run: npm run build
+```
+
+The **testing pyramid** guides what to test at the CI level:
+
+```
+        /  E2E Tests  \        ← Few: slow, expensive, high confidence
+       / Integration    \      ← Some: test component interactions
+      /   Unit Tests      \    ← Many: fast, focused, isolated
+```
+
+- **Unit tests** (hundreds–thousands): test individual functions and modules in isolation. Fast, run in milliseconds.
+- **Integration tests** (tens–hundreds): test how components work together — API routes with databases, services with external clients.
+- **End-to-end tests** (few–tens): test complete user workflows through the UI. Slow and brittle, reserved for critical paths.
+
+CI succeeds when the team trusts the pipeline. If tests are flaky or slow, developers stop paying attention to failures. Keep CI fast (under 10 minutes is ideal) and treat failures as blocking — a red build means stop and fix.
+
+## Continuous Delivery and Deployment in Depth
+
+**Continuous Delivery** extends CI by automating the release process. After CI passes, the pipeline builds a deployable artifact (Docker image, binary, package), deploys it to a staging environment, runs additional validation, and then waits for a human to approve the production release. The key principle: every commit that passes CI is potentially releasable.
+
+**Continuous Deployment** removes the approval step. Every commit that passes the full pipeline — CI, staging deployment, smoke tests — goes directly to production without human intervention. This requires exceptionally high confidence in your test suite and monitoring.
+
+```
+CI/CD Pipeline Stages:
+
+Commit → Build → Unit Test → Integration Test → Build Artifact
+                                                       │
+                                    ┌──────────────────┘
+                                    ▼
+                            Deploy to Staging
+                                    │
+                                    ▼
+                         Smoke / E2E Tests
+                                    │
+                    ┌───────────────┼───────────────┐
+                    ▼                               ▼
+          [Manual Approval]                  [Auto-Deploy]
+          Continuous DELIVERY           Continuous DEPLOYMENT
+                    │                               │
+                    ▼                               ▼
+            Deploy to Production            Deploy to Production
+                    │                               │
+                    ▼                               ▼
+              Health Checks                   Health Checks
+```
+
+A production-grade CD pipeline includes safeguards:
+
+```yaml
+# Deployment stage with safety mechanisms
+deploy-production:
+  needs: [staging-tests]
+  environment:
+    name: production
+    url: https://app.example.com
+  steps:
+    - name: Deploy canary (5% traffic)
+      run: kubectl set image deployment/app app=myapp:$SHA --canary
+
+    - name: Monitor error rate (5 minutes)
+      run: ./scripts/check-error-rate.sh --threshold 0.5%
+
+    - name: Promote to full rollout
+      run: kubectl rollout resume deployment/app
+
+    - name: Verify health
+      run: curl -f https://app.example.com/health
+```
+
+**Deployment strategies** control how new code reaches users:
+
+| Strategy | Description | Rollback speed |
+|---|---|---|
+| **Rolling update** | Gradually replace old instances with new | Moderate |
+| **Blue-green** | Run two full environments, switch traffic | Fast (switch back) |
+| **Canary** | Route small % of traffic to new version | Fast (route away) |
+| **Feature flags** | Deploy code but toggle visibility | Instant |
+
+## Key Differences
+
+1. **Scope.** CI is about code quality — does the code compile, pass tests, and meet style standards? CD is about release engineering — can we reliably, safely, and frequently ship that tested code to users?
+
+2. **Adoption is incremental.** You can and should adopt CI without CD. Many teams run CI for years before automating deployments. Jumping straight to continuous deployment without solid CI is a recipe for shipping broken code faster.
+
+3. **Delivery vs Deployment.** Continuous delivery means every commit could go to production. Continuous deployment means every commit does go to production. The distinction is a single manual approval gate. Delivery is appropriate when releases need business coordination (marketing launches, compliance reviews). Deployment suits teams shipping SaaS products where small, frequent releases are preferable.
+
+4. **Testing requirements scale.** CI can work with moderate test coverage. Continuous deployment demands comprehensive automated testing because there's no human reviewing each release. If your tests don't catch a regression, users will.
+
+5. **Rollback complexity.** CI doesn't deploy anything, so there's nothing to roll back. CD must include rollback mechanisms — previous Docker image, database migration reversals, feature flags to disable broken features. The deployment strategy directly impacts how fast you can recover.
+
+## When to Use Which
+
+**Start with CI** if you don't have it. Even a basic pipeline that runs linting and unit tests on every pull request will catch bugs, enforce consistency, and build team confidence in automated checks.
+
+**Add Continuous Delivery** when manual deployments are a bottleneck or a source of errors. If deploys involve SSHing into servers and running scripts, or if "deploy day" is stressful, automated delivery will reduce risk and increase velocity.
+
+**Move to Continuous Deployment** when your team has: comprehensive automated tests (unit + integration + E2E for critical paths), robust monitoring and alerting, feature flags for decoupling deploy from release, and a culture of small, frequent commits. This is not required — many successful teams use continuous delivery with manual approval and ship multiple times per day.
+
+**Feature flags** deserve special mention. They decouple deployment (putting code on servers) from release (exposing functionality to users). This means you can deploy incomplete features behind flags, test them in production with internal users, and enable them for everyone when ready — with an instant kill switch if something goes wrong.
+
+## Common Misconceptions
+
+**"CI/CD is a tool."** CI/CD is a set of practices. Jenkins, GitHub Actions, GitLab CI, and CircleCI are tools that enable those practices, but installing a CI server doesn't mean you're doing continuous integration. CI requires the discipline of frequent merges, comprehensive tests, and treating build failures as urgent.
+
+**"We do CI — we have a build server."** If developers work on long-lived feature branches for weeks and only run the pipeline when they merge, that's not continuous integration. The "continuous" part means integrating daily, ideally multiple times per day.
+
+**"Continuous deployment is reckless."** Companies like Google, Netflix, Amazon, and Etsy deploy to production hundreds or thousands of times per day. They can do this because they've invested in testing, canary deployments, monitoring, and instant rollback. The deployments are smaller and therefore safer than batched monthly releases.
+
+**"You need 100% test coverage for CD."** Coverage percentage is a poor proxy for confidence. Focus on testing critical paths, edge cases, and integration points. A 70%-coverage suite that tests the right things is better than 95% coverage padded with trivial assertions.
+
+## Key Takeaways
+
+- CI (build + test on every commit) and CD (automated release pipeline) are separate practices adopted incrementally. Start with CI.
+- Continuous delivery automates everything up to a manual approval gate. Continuous deployment removes that gate entirely.
+- The testing pyramid (many unit tests, some integration, few E2E) is the foundation. Without reliable tests, CD just ships bugs faster.
+- Deployment strategies (rolling, blue-green, canary) and feature flags are essential safety mechanisms for CD. Always have a fast rollback path.
+- CI/CD is a discipline, not a tool. Frequent commits, comprehensive tests, and treating pipeline failures as blocking are the practices that make the tools effective.

@@ -1,0 +1,128 @@
+---
+title: "PostgreSQL vs MySQL: Battle of the Open-Source Relational Databases"
+sideA: "PostgreSQL"
+sideB: "MySQL"
+domains:
+  - "databases"
+difficulty: "intermediate"
+publishedAt: "2026-03-10"
+summary: "A detailed comparison of PostgreSQL and MySQL covering SQL standards compliance, advanced features, replication, extensibility, and practical guidance on when to choose each."
+---
+
+PostgreSQL and MySQL are the two most popular open-source relational databases, powering everything from side projects to Fortune 500 systems. Both are excellent, but they differ significantly in philosophy, feature depth, and operational characteristics. This comparison goes beyond surface-level benchmarks to examine the differences that actually matter when building real systems.
+
+## Quick Reference
+
+| Aspect | PostgreSQL | MySQL |
+|---|---|---|
+| SQL compliance | Highly standards-compliant | Partial; some non-standard behaviors |
+| License | PostgreSQL License (permissive, BSD-like) | GPL v2 (with commercial license via Oracle) |
+| MVCC | Full MVCC with no read locks | MVCC in InnoDB engine only |
+| JSON support | JSONB with indexing and operators | JSON type with limited indexing |
+| Extensibility | Custom types, operators, index methods, PL languages | User-defined functions, limited plugin API |
+| Replication | Streaming, logical, bi-directional | Built-in async/semi-sync, Group Replication |
+| Default storage | Single engine (heap-based) | Pluggable engines (InnoDB default, MyISAM, etc.) |
+| Full-text search | Built-in with tsvector/tsquery | Built-in with FULLTEXT indexes |
+
+## PostgreSQL in Depth
+
+PostgreSQL calls itself "the world's most advanced open source relational database," and that claim holds up. It has been developed continuously since 1986 (originating from the UC Berkeley POSTGRES project) with an unwavering focus on correctness and standards compliance.
+
+**Advanced SQL features** are where PostgreSQL pulls ahead. Common Table Expressions (CTEs), window functions, lateral joins, DISTINCT ON, array types, range types, and recursive queries all work exactly as the SQL standard specifies. If you learn SQL through PostgreSQL, you learn standard SQL.
+
+```sql
+-- Recursive CTE: organizational hierarchy
+WITH RECURSIVE org AS (
+  SELECT id, name, manager_id, 1 AS depth
+  FROM employees WHERE manager_id IS NULL
+  UNION ALL
+  SELECT e.id, e.name, e.manager_id, o.depth + 1
+  FROM employees e JOIN org o ON e.manager_id = o.id
+)
+SELECT * FROM org ORDER BY depth, name;
+```
+
+**JSONB** is PostgreSQL's standout feature for teams that want relational rigor with document flexibility. JSONB stores binary JSON with full indexing support (GIN indexes), containment operators (`@>`), and path queries. You get the best of both worlds — structured relational tables alongside semi-structured JSON columns.
+
+```sql
+-- Query JSONB: find users with a specific preference
+SELECT name FROM users
+WHERE preferences @> '{"theme": "dark"}';
+
+-- Create a GIN index for fast JSONB lookups
+CREATE INDEX idx_prefs ON users USING GIN (preferences);
+```
+
+**Extensibility** is a core design principle. You can create custom data types, operators, index access methods, and procedural languages (PL/pgSQL, PL/Python, PL/Rust). Extensions like PostGIS (geospatial), TimescaleDB (time-series), and pgvector (AI embeddings) run inside the database process, which is far more efficient than bolting on external services.
+
+PostgreSQL's **query planner** is sophisticated, supporting hash joins, merge joins, nested loops, parallel query execution, and JIT compilation. It generally makes better decisions on complex queries than MySQL, especially with many joins.
+
+## MySQL in Depth
+
+MySQL is the most widely deployed open-source database in the world. It powers WordPress, Wikipedia, Facebook (with heavy modifications), and countless web applications. Its strengths lie in simplicity, speed for common workloads, and a massive ecosystem.
+
+**Read-heavy web workloads** are where MySQL has traditionally excelled. Simple primary-key lookups, basic joins, and high-concurrency read patterns are MySQL's sweet spot. The InnoDB storage engine provides ACID compliance, row-level locking, and crash recovery.
+
+```sql
+-- MySQL: efficient paginated query with covering index
+SELECT id, title, created_at
+FROM articles
+WHERE status = 'published'
+ORDER BY created_at DESC
+LIMIT 20 OFFSET 40;
+```
+
+**Replication** is battle-tested and straightforward to set up. MySQL's built-in asynchronous replication, semi-synchronous replication, and Group Replication (for multi-primary setups) cover most high-availability patterns. Tools like ProxySQL, MySQL Router, and Orchestrator provide mature connection routing and failover automation.
+
+**The ecosystem** is enormous. Nearly every hosting provider, ORM, framework, and monitoring tool has first-class MySQL support. Finding MySQL expertise is easier and often cheaper than finding PostgreSQL expertise, particularly in web development shops.
+
+MySQL 8.0+ closed many gaps with PostgreSQL: window functions, CTEs, JSON functions, roles-based access control, and invisible indexes were all added. The gap is narrowing, though PostgreSQL still leads in standards compliance and advanced features.
+
+## Key Differences
+
+1. **SQL standards compliance.** PostgreSQL follows the SQL standard closely. MySQL historically had permissive behaviors — silent truncation, implicit type coercion, and `0000-00-00` dates — that can hide bugs. MySQL's `STRICT_TRANS_TABLES` mode (default since 5.7) addresses many of these, but legacy behaviors persist in older codebases.
+
+2. **JSONB vs JSON.** PostgreSQL's JSONB is indexable, queryable with operators, and supports partial updates. MySQL's JSON type stores valid JSON and supports path-based queries, but indexing requires generated columns — an extra step that adds schema complexity.
+
+3. **Extensibility model.** PostgreSQL's extension system allows deep customization (new types, index methods, foreign data wrappers). MySQL's plugin API is narrower, and its pluggable storage engine architecture, while unique, is rarely used beyond InnoDB today.
+
+4. **Concurrency handling.** PostgreSQL uses MVCC across all operations, meaning readers never block writers. MySQL's InnoDB also uses MVCC, but certain DDL operations and gap locking behaviors can cause unexpected contention under heavy write loads.
+
+5. **Licensing.** PostgreSQL's license is permissive with no restrictions. MySQL's GPL means derivative works must also be open-source unless you purchase a commercial license from Oracle. This matters for embedded or proprietary distributions.
+
+6. **Advanced analytics.** PostgreSQL supports a broader set of window functions, GROUPING SETS, CUBE, ROLLUP, and parallel query execution for analytics. MySQL can handle analytics but typically requires offloading to a dedicated OLAP system sooner.
+
+## When to Use Which
+
+**Choose PostgreSQL when:**
+- You need advanced SQL features (CTEs, window functions, lateral joins, array types)
+- Your data model mixes relational and semi-structured data (JSONB)
+- You need GIS/spatial queries (PostGIS has no peer)
+- Data correctness and standards compliance are paramount
+- You want to leverage extensions (pgvector for AI, TimescaleDB for time-series)
+- You need complex analytical queries alongside OLTP
+
+**Choose MySQL when:**
+- You are building a read-heavy web application with straightforward queries
+- Your team has deep MySQL expertise and tooling already in place
+- You need proven, easy-to-configure replication with mature failover tools
+- You are using a framework or CMS with MySQL-specific optimizations (WordPress, Laravel)
+- You want the broadest hosting compatibility (shared hosting, managed services)
+- Operational simplicity is a priority over feature depth
+
+## Common Misconceptions
+
+**"PostgreSQL is slower than MySQL."** This was arguably true for simple queries 15 years ago. Modern PostgreSQL performs comparably on simple workloads and significantly outperforms MySQL on complex queries with multiple joins, subqueries, or analytics. Always benchmark your actual workload.
+
+**"MySQL is not suitable for serious applications."** Facebook, Uber (initially), Shopify, and Airbnb all run on MySQL at enormous scale. The database is not the bottleneck — architecture, indexing, and query design matter far more than the engine.
+
+**"You cannot do JSON in MySQL."** MySQL 8.0 has solid JSON support with path-based queries, JSON_TABLE for converting JSON to rows, and multi-valued indexes. It is less elegant than PostgreSQL's JSONB, but fully functional for most use cases.
+
+**"PostgreSQL is hard to operate."** PostgreSQL's reputation for operational complexity is outdated. Tools like pgBouncer, Patroni, and managed services (RDS, Supabase, Neon) have made PostgreSQL operations straightforward. The defaults are also more sensible than they were a decade ago.
+
+## Key Takeaways
+
+- PostgreSQL is the better choice when you need advanced SQL, JSONB, extensibility, or analytical capabilities. It favors correctness and feature depth.
+- MySQL is the better choice when you need operational simplicity, read-heavy performance, proven replication, and broad ecosystem compatibility. It favors pragmatism and ease of adoption.
+- Both databases are excellent for the vast majority of applications. The differences matter most at the extremes: complex data models favor PostgreSQL, simple high-throughput web apps favor MySQL.
+- If you are starting a new project with no strong constraints, PostgreSQL is the safer default — its feature set is a superset, and you will not outgrow it.

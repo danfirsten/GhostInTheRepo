@@ -1,0 +1,178 @@
+---
+title: "CSS Modules vs Tailwind CSS vs CSS-in-JS"
+sideA: "CSS Modules"
+sideB: "Tailwind & CSS-in-JS"
+domains:
+  - "web-development"
+difficulty: "intermediate"
+publishedAt: "2026-03-10"
+summary: "A comparison of three dominant CSS strategies — CSS Modules' file-scoped classes, Tailwind's utility-first approach, and CSS-in-JS's co-located styles — covering scoping, performance, DX, and server component compatibility."
+---
+
+Styling in modern web development is a solved problem with multiple valid solutions. CSS Modules scope styles to components through build-time class name hashing. Tailwind CSS eliminates custom class names entirely in favor of utility classes applied directly in markup. CSS-in-JS libraries like styled-components and Emotion write CSS in JavaScript, co-locating styles with component logic. Each approach reflects a different philosophy about where styles should live and how they should scale.
+
+## Quick Reference
+
+| Aspect | CSS Modules | Tailwind CSS | CSS-in-JS |
+|---|---|---|---|
+| **Scoping mechanism** | Build-time class name hashing | Utility classes (no custom names) | Runtime or build-time scoped classes |
+| **File location** | Separate `.module.css` files | Inline in markup (`className="..."`) | Inside JS/TS component files |
+| **Runtime cost** | None | None | Varies (runtime libs have overhead) |
+| **Bundle size** | Per-component CSS | Single utility stylesheet (~10 kB gzipped) | JS bundle includes style logic |
+| **TypeScript support** | Typed with plugins | Class strings (no type safety) | Fully typed props and themes |
+| **Design system** | CSS custom properties | `tailwind.config.js` tokens | Theme objects in JS |
+| **Learning curve** | Low (it is just CSS) | Moderate (memorize utility names) | Moderate (API-specific patterns) |
+| **Server Components** | Full support | Full support | Limited (runtime libs break) |
+| **Popular with** | Next.js, Vue (scoped styles) | Vercel, Stripe, many startups | Older React apps, design systems |
+
+## CSS Modules in Depth
+
+CSS Modules are standard CSS files with one twist: class names are locally scoped by default. When you import a `.module.css` file, the build tool (webpack, Vite) transforms each class name into a unique hash, guaranteeing no collisions across components.
+
+```css
+/* Button.module.css */
+.button {
+  padding: 0.75rem 1.5rem;
+  border-radius: var(--radius-md);
+  background: var(--color-violet);
+  color: var(--ghost-white);
+  font-weight: 600;
+}
+
+.button:hover {
+  background: var(--color-violet-light);
+}
+```
+
+```tsx
+import styles from './Button.module.css';
+
+export function Button({ children }) {
+  return <button className={styles.button}>{children}</button>;
+}
+// Rendered: <button class="Button_button_x7k2a">Click me</button>
+```
+
+The beauty of CSS Modules is that **it is just CSS**. You get the full power of the language — media queries, pseudo-elements, `@supports`, container queries, CSS nesting — without learning a new API. CSS custom properties integrate naturally for theming. There is no runtime cost; styles are extracted to static `.css` files at build time.
+
+CSS Modules work perfectly with React Server Components because there is no JavaScript runtime involved in style application. This is why Next.js uses CSS Modules as its default styling recommendation.
+
+The downside is indirection. Styles live in a separate file, so you context-switch between markup and CSS. Conditional styling requires string concatenation or a helper like `clsx`:
+
+```tsx
+import clsx from 'clsx';
+<button className={clsx(styles.button, isActive && styles.active)} />
+```
+
+## Tailwind CSS in Depth
+
+Tailwind takes a radical stance: instead of writing custom CSS, you compose pre-defined utility classes directly in your markup. Every visual property — spacing, color, typography, layout — has a corresponding class name.
+
+```tsx
+export function Button({ children }) {
+  return (
+    <button className="px-6 py-3 rounded-md bg-violet-500 text-white font-semibold hover:bg-violet-400 transition-colors">
+      {children}
+    </button>
+  );
+}
+```
+
+There is no separate CSS file. The class names _are_ the styling language. Tailwind's compiler scans your source files, identifies which utilities you actually use, and generates a single CSS file containing only those classes. The result is a remarkably small stylesheet — typically 8-15 kB gzipped for an entire application.
+
+**Design system integration** happens through `tailwind.config.js`, where you define your color palette, spacing scale, breakpoints, and fonts. Every utility class respects these tokens, enforcing consistency without manual discipline:
+
+```js
+// tailwind.config.js
+module.exports = {
+  theme: {
+    extend: {
+      colors: {
+        violet: { 500: '#A78BFA', 400: '#C4B5FD' },
+        abyss: '#080C15',
+      },
+    },
+  },
+};
+```
+
+The criticism of Tailwind is **markup readability**. Long class strings are genuinely harder to scan than semantic class names. Tailwind's response is that co-locating styles with markup eliminates the mental overhead of naming things and switching between files. In practice, most teams either love this tradeoff or hate it — there is little middle ground.
+
+Tailwind has zero runtime cost and full server component compatibility, making it a strong choice for Next.js App Router projects.
+
+## CSS-in-JS in Depth
+
+CSS-in-JS libraries embed style definitions inside JavaScript. The original appeal was co-location: styles, markup, and logic in one file, with full access to JavaScript variables, props, and theme objects.
+
+```tsx
+// styled-components
+import styled from 'styled-components';
+
+const Button = styled.button<{ $variant: 'primary' | 'ghost' }>`
+  padding: 0.75rem 1.5rem;
+  border-radius: ${({ theme }) => theme.radii.md};
+  background: ${({ $variant, theme }) =>
+    $variant === 'primary' ? theme.colors.violet : 'transparent'};
+  color: ${({ theme }) => theme.colors.ghostWhite};
+  font-weight: 600;
+`;
+```
+
+The prop-based styling and theme access made CSS-in-JS extremely popular for design systems. TypeScript integration is excellent — you get autocomplete for theme values and compile-time errors for invalid props.
+
+However, **runtime CSS-in-JS has a significant cost**. Libraries like styled-components and Emotion inject `<style>` tags into the DOM at runtime, which means:
+
+- JavaScript must parse and generate CSS on every render.
+- Style serialization adds to the JS bundle.
+- It blocks React Server Components, which cannot execute client-side JavaScript.
+
+This has driven a migration toward **zero-runtime CSS-in-JS** alternatives:
+
+| Library | Runtime | Server Components |
+|---|---|---|
+| styled-components | Yes (runtime) | No |
+| Emotion | Yes (runtime) | No |
+| vanilla-extract | No (build-time) | Yes |
+| Panda CSS | No (build-time) | Yes |
+| StyleX (Meta) | No (build-time) | Yes |
+
+Zero-runtime solutions extract CSS at build time, combining the DX of CSS-in-JS with the performance profile of CSS Modules.
+
+## Key Differences
+
+1. **Mental model**: CSS Modules thinks in "style files per component." Tailwind thinks in "utility classes as a design language." CSS-in-JS thinks in "styles are JavaScript data."
+
+2. **Runtime performance**: CSS Modules and Tailwind have zero runtime cost — CSS is static at build time. Runtime CSS-in-JS (styled-components, Emotion) adds JavaScript overhead on every render. This matters most on low-powered mobile devices.
+
+3. **Server Component compatibility**: CSS Modules and Tailwind work seamlessly with React Server Components. Runtime CSS-in-JS does not, because it requires client-side JavaScript execution. This is the primary reason CSS-in-JS adoption has declined since Next.js 13.
+
+4. **Bundle characteristics**: CSS Modules generate per-component CSS files (tree-shaken by route). Tailwind generates a single, small, shared stylesheet. CSS-in-JS adds to the JavaScript bundle, not the CSS bundle.
+
+5. **Design system enforcement**: Tailwind enforces tokens through its config — you cannot accidentally use an off-brand color if it is not in the config. CSS Modules rely on CSS custom properties (which can be bypassed). CSS-in-JS enforces via typed theme objects.
+
+6. **Refactoring and maintenance**: Tailwind's utility classes are grep-able and never "orphaned" (unused styles left behind). CSS Modules can accumulate dead CSS unless tooling detects it. CSS-in-JS co-locates styles with components, so deleting a component deletes its styles.
+
+## When to Use Which
+
+**Choose CSS Modules when** you want standard CSS with component scoping, your team is comfortable with CSS, and you value the separation of concerns between markup and styles. CSS Modules are the safest default for Next.js projects.
+
+**Choose Tailwind when** you want rapid prototyping, strict design token enforcement, and minimal CSS bundle size. Tailwind works exceptionally well for teams that have adopted its conventions and for projects where consistent spacing and color usage matter more than semantic class names.
+
+**Choose CSS-in-JS when** you are building a component library or design system that needs prop-based style variants and typed theme access. Strongly prefer zero-runtime solutions (vanilla-extract, Panda CSS, StyleX) over runtime solutions for new projects.
+
+## Common Misconceptions
+
+- **"Tailwind is just inline styles."** Inline styles cannot handle media queries, pseudo-classes, or pseudo-elements. Tailwind utility classes compile to real CSS with full support for responsive design (`md:flex`), hover states (`hover:bg-violet-400`), and more.
+
+- **"CSS Modules are outdated."** CSS Modules are the default styling solution recommended by Next.js and work perfectly with every modern CSS feature including nesting, container queries, and `@layer`. They are anything but outdated.
+
+- **"CSS-in-JS is dead."** Runtime CSS-in-JS is declining, but zero-runtime CSS-in-JS (vanilla-extract, Panda CSS, StyleX from Meta) is actively growing. The concept of co-locating styles with components is very much alive — the implementation is shifting to build-time extraction.
+
+- **"You can only use one approach."** Many projects mix strategies. Tailwind for layout utilities, CSS Modules for complex component styles, and a CSS-in-JS library for a shared design system can coexist.
+
+## Key Takeaways
+
+- CSS Modules offer the lowest learning curve and zero runtime cost — they are standard CSS with automatic scoping. They are the safe default.
+- Tailwind trades markup readability for developer velocity, design consistency, and tiny bundle sizes. It is a workflow shift, not just a tool swap.
+- Runtime CSS-in-JS is being replaced by zero-runtime alternatives due to performance costs and server component incompatibility. Evaluate vanilla-extract, Panda CSS, or StyleX for new projects.
+- The best choice depends on team preferences, project requirements, and framework constraints. There is no universally "correct" CSS strategy.

@@ -1,0 +1,133 @@
+---
+title: "Git Merge vs Rebase: Managing Branch History"
+sideA: "Git Merge"
+sideB: "Git Rebase"
+domains:
+  - "terminal-and-tools"
+difficulty: "beginner"
+publishedAt: "2026-03-10"
+summary: "A practical comparison of git merge and git rebase covering commit history, conflict resolution, the golden rule of rebasing, and how teams choose between them."
+---
+
+Merge and rebase both integrate changes from one branch into another, but they produce fundamentally different commit histories. Merge preserves the exact timeline of parallel development. Rebase rewrites history to create a linear sequence of commits. Understanding the tradeoffs lets you keep your repository history clean without losing work or confusing your team.
+
+## Quick Reference
+
+| Aspect | Git Merge | Git Rebase |
+|---|---|---|
+| History shape | Branching and merging (diamond pattern) | Linear (straight line) |
+| Merge commits | Creates a merge commit | No merge commit (unless combined with merge) |
+| Original commits | Preserved exactly | Rewritten with new hashes |
+| Conflict resolution | Resolve once at merge point | Resolve per commit during rebase |
+| Safety | Safe for shared/public branches | Dangerous for shared branches |
+| Traceability | Shows when and where branches diverged | Shows a clean sequence of changes |
+| Default behavior | `git merge feature` | `git rebase main` (from feature branch) |
+| Undo difficulty | Easy (`git reset` to pre-merge) | Hard (requires `git reflog`) |
+
+## Git Merge in Depth
+
+When you run `git merge feature` from the `main` branch, Git finds the common ancestor of both branches, combines the changes, and creates a **merge commit** — a special commit with two parents that records where the branches joined.
+
+```bash
+# Merging feature into main
+git checkout main
+git merge feature
+
+# History result:
+#   * (merge commit) ← main
+#   |\
+#   | * commit C (feature)
+#   | * commit B (feature)
+#   * | commit D (main)
+#   |/
+#   * commit A (common ancestor)
+```
+
+The merge commit preserves the complete history of parallel development. You can see exactly when the feature branch was created, what commits happened on each branch, and when they were combined. For teams that value traceability — knowing who did what and when — this is important context.
+
+Merge is **safe by default**. It never rewrites existing commits. Every commit retains its original hash, timestamp, and authorship. This makes merge suitable for shared branches where multiple developers have based work on the same commits.
+
+The downside is a **cluttered history**. In active repositories, frequent merges create a web of diamond-shaped branch-and-merge patterns that can be hard to read with `git log`. Merge commits themselves carry no meaningful code change — they are structural bookkeeping. Some teams find this noise obscures the actual development narrative.
+
+**Fast-forward merges** are a special case. When the target branch has no new commits since the feature branched off, Git can simply move the branch pointer forward without creating a merge commit. This produces linear history naturally, but only works when there is no divergence.
+
+## Git Rebase in Depth
+
+Rebase takes a different approach: it replays your branch's commits on top of the target branch, one by one, creating new commits with new hashes. The end result looks like you wrote your feature starting from the latest state of main, even though you actually started days ago.
+
+```bash
+# Rebasing feature onto main
+git checkout feature
+git rebase main
+
+# Before rebase:            After rebase:
+#   * C (feature)           * C' (feature)
+#   * B (feature)           * B' (feature)
+#   | * D (main)            * D (main)
+#   |/                      * A
+#   * A
+```
+
+The rebased history is **linear and easy to read**. `git log --oneline` shows a clean sequence of commits without merge diamonds. Each commit tells a clear story, and bisecting to find a bug is simpler because every commit is on one line.
+
+**Interactive rebase** (`git rebase -i`) is one of Git's most powerful features. Before pushing, you can squash multiple work-in-progress commits into a single meaningful commit, reorder commits, edit commit messages, or drop commits entirely. This lets you clean up your local history before sharing it with the team.
+
+```bash
+# Interactive rebase: clean up last 3 commits
+git rebase -i HEAD~3
+
+# In the editor:
+# pick abc1234 Add user validation
+# squash def5678 Fix typo in validation
+# squash ghi9012 Add missing test case
+# → Results in one clean commit: "Add user validation"
+```
+
+The critical tradeoff is that rebase **rewrites history**. The original commits (B, C) are replaced with new commits (B', C') that have different hashes. This is perfectly fine for local, unpushed branches. It is dangerous for branches that others have already pulled, because their copies of B and C no longer match your B' and C'.
+
+## Key Differences
+
+1. **History shape.** Merge preserves the branching structure — you see parallel streams of development joining together. Rebase flattens history into a single line, which is easier to read but loses the context of when branches existed.
+
+2. **Commit identity.** Merge leaves all existing commits untouched. Rebase creates new commits with new SHA hashes, which breaks references that other developers or CI systems may hold to the original commits.
+
+3. **Conflict resolution.** With merge, you resolve all conflicts once in the merge commit. With rebase, you may resolve conflicts at each commit being replayed. If your branch has 10 commits and the first one conflicts with main, you resolve it for commit 1, then potentially again for commits 2 through 10.
+
+4. **The golden rule.** Never rebase commits that have been pushed to a shared branch. If others have based work on those commits, rewriting them creates divergent histories that are painful to reconcile. Rebase is for cleaning up local work before sharing.
+
+5. **Bisect friendliness.** A linear history (rebase) makes `git bisect` more effective. Each commit represents a complete, testable state. Merge commits can complicate bisect because they combine multiple streams of changes.
+
+## When to Use Which
+
+**Use merge when:** you are integrating a feature branch into a shared branch (main, develop). The merge commit documents the integration point. This is the safe default for team workflows.
+
+**Use rebase when:** you want to update your local feature branch with the latest changes from main before opening a pull request. Rebasing your feature onto main produces a clean diff that reviewers appreciate.
+
+**Use squash merge when:** you want the simplicity of merge with the cleanliness of rebase. `git merge --squash` condenses all feature branch commits into a single commit on the target branch. GitHub and GitLab offer "Squash and merge" as a pull request option, which has become the most popular strategy for many teams.
+
+```bash
+# Common workflow: rebase locally, merge on the server
+git checkout feature
+git rebase main          # linearize your work on top of latest main
+git push --force-with-lease  # safe force push to your feature branch
+# Then merge via pull request (merge commit or squash)
+```
+
+**Use rebase interactively when:** you want to clean up commit history before sharing — squashing fixup commits, rewording messages, or reordering changes for a logical narrative.
+
+## Common Misconceptions
+
+**"Rebase is dangerous."** Rebase is safe when used on local, unpushed branches. The danger is specifically rebasing commits that others have already pulled. The `--force-with-lease` flag provides a safety net when pushing rebased branches by refusing to overwrite commits you have not seen.
+
+**"Merge commits are bad."** Merge commits carry useful metadata — they record when a branch was integrated and what was combined. Some teams value this traceability. The "clean history" preference is aesthetic, not technical.
+
+**"You should always rebase."** Teams with many contributors and long-lived branches may find rebase workflows create more conflict resolution work than merge workflows. The right strategy depends on your branch lifetime, team size, and how much you value linear history.
+
+**"Squash merge is always best."** Squash merge loses individual commit history from the feature branch. If you carefully craft meaningful commits (each one a logical unit of work), squash merge discards that effort. Use squash when commits are messy; use regular merge when they are clean.
+
+## Key Takeaways
+
+- Merge preserves history as it happened, creating merge commits at integration points. Rebase rewrites history to be linear, creating new commits with new hashes. Both achieve the same result — integrated code — with different historical narratives.
+- Follow the golden rule: never rebase commits that exist on shared branches. Rebase your local feature branches freely; merge into shared branches.
+- Squash merge offers a pragmatic middle ground — one clean commit per feature on main, without requiring developers to maintain perfect commit hygiene during development.
+- The best strategy is the one your team agrees on and follows consistently. Document it in your contributing guide and enforce it through pull request settings.

@@ -1,0 +1,125 @@
+---
+title: "Serverless vs Containers"
+sideA: "Serverless"
+sideB: "Containers"
+domains:
+  - "cloud-devops"
+difficulty: "intermediate"
+publishedAt: "2026-03-10"
+summary: "Serverless abstracts away all infrastructure and scales per-request, while containers give you full control over the runtime environment with predictable performance."
+---
+
+The serverless vs. containers debate is really a question about where you want the abstraction boundary. Serverless (functions-as-a-service like AWS Lambda, Azure Functions, Google Cloud Functions) hides the server entirely — you upload code, define triggers, and the platform handles scaling, patching, and availability. Containers (Docker on ECS, Kubernetes, Cloud Run) give you a portable, reproducible runtime that you control, at the cost of managing orchestration and capacity. Both are valid production architectures, and the right choice depends on your workload characteristics, team expertise, and cost sensitivity.
+
+## Quick Reference
+
+| Aspect | Serverless (FaaS) | Containers |
+|---|---|---|
+| **Scaling** | Automatic, per-request, to zero | Manual or auto-scaled; minimum replicas typical |
+| **Cold starts** | Yes (100ms–10s depending on runtime) | No (always running, or fast container start) |
+| **Pricing** | Per invocation + duration + memory | Per provisioned resource (CPU/memory/time) |
+| **Max execution time** | 15 min (Lambda), 60 min (Azure) | Unlimited |
+| **State** | Stateless by design | Stateful possible (volumes, sidecars) |
+| **Vendor lock-in** | High (proprietary triggers, APIs) | Low (OCI standard, portable across clouds) |
+| **Debugging** | Difficult (remote-only, limited tooling) | Standard (local Docker, attach debugger) |
+| **Deployment unit** | Function (single handler) | Image (full application/service) |
+| **Ops overhead** | Minimal (no servers to manage) | Moderate to high (orchestration, networking) |
+| **Best for** | Event-driven, bursty, lightweight tasks | Long-running services, complex applications |
+
+## Serverless in Depth
+
+Serverless functions are event-driven compute units. You write a handler, configure a trigger (HTTP request, message queue, file upload, cron schedule), and the cloud provider runs your code in a managed execution environment.
+
+```typescript
+// AWS Lambda handler (Node.js)
+export const handler = async (event: APIGatewayEvent) => {
+  const body = JSON.parse(event.body || '{}');
+  const result = await processOrder(body.orderId);
+
+  return {
+    statusCode: 200,
+    body: JSON.stringify({ result }),
+  };
+};
+```
+
+**Scaling** is the killer feature. Each incoming request gets its own execution environment. If you receive 10,000 concurrent requests, the platform spins up 10,000 instances. When traffic drops to zero, you pay nothing. This scale-to-zero behavior makes serverless ideal for unpredictable or bursty workloads.
+
+**Cold starts** are the primary trade-off. When a function hasn't been invoked recently, the platform must initialize a new execution environment: download the code, start the runtime, run initialization logic. This adds latency — typically 100-500ms for Node.js/Python, but potentially several seconds for Java/.NET. Provisioned concurrency can mitigate this at additional cost.
+
+**Constraints** shape your architecture. Functions have memory limits (up to 10GB on Lambda), execution time limits (15 minutes), payload size limits, and no persistent local filesystem. These constraints push you toward event-driven, microservice architectures whether you want them or not.
+
+The **pricing model** is granular: you pay per request, per millisecond of execution, and per MB of allocated memory. For low-traffic or sporadic workloads, this is dramatically cheaper than running containers 24/7. But the math changes at scale.
+
+## Containers in Depth
+
+Containers package your application with its entire runtime environment into a portable image. You build once, run anywhere — locally, on a VM, in Kubernetes, on any cloud.
+
+```dockerfile
+FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --production
+COPY . .
+EXPOSE 3000
+CMD ["node", "server.js"]
+```
+
+**Orchestration** is the operational cost. Running containers in production means managing Kubernetes (or ECS, Nomad, etc.), configuring networking, setting up health checks, handling rolling deployments, and managing persistent storage. Managed Kubernetes services (EKS, GKE, AKS) reduce but don't eliminate this burden.
+
+**Performance** is predictable. There are no cold starts — your container is already running and accepting requests. You control the CPU, memory, and runtime configuration. This makes containers the clear choice for latency-sensitive workloads and long-running processes like WebSocket servers, video encoding, or ML inference.
+
+**Portability** is a real advantage. A Docker image runs the same way on your laptop, in CI, and in production. Switching cloud providers means changing your orchestration config, not rewriting your application. OCI (Open Container Initiative) standards ensure interoperability.
+
+**State management** is flexible. Containers can mount persistent volumes, run sidecars (like a Redis cache alongside your app), and maintain in-memory state across requests. Stateful workloads like databases are routinely run in containers.
+
+## Key Differences
+
+1. **Operational responsibility.** Serverless offloads nearly all infrastructure concerns to the provider. Containers require you to manage orchestration, scaling policies, networking, and security patching. The trade-off is control vs. convenience.
+
+2. **Cost at scale.** Serverless pricing is linear with usage — each additional request costs the same. Container pricing is step-function: you provision capacity, and utilization determines your effective cost-per-request. At high, steady traffic, containers are typically 3-10x cheaper because you amortize fixed costs across millions of requests.
+
+3. **Cold starts vs. always-on.** Serverless functions incur startup latency after idle periods. Containers stay warm. For user-facing APIs where p99 latency matters, cold starts can be a dealbreaker. For background processing (file uploads, queue consumers), they're irrelevant.
+
+4. **Execution duration.** Serverless has hard time limits. If your task takes 20 minutes — batch processing, video transcoding, ML training — serverless won't work. Containers run indefinitely.
+
+5. **Debugging and local development.** You can run a container locally with `docker run` and attach a debugger. Serverless functions require emulators (SAM, Serverless Framework) or remote debugging, which is slower and less reliable. The feedback loop is meaningfully worse.
+
+6. **Vendor lock-in.** Serverless functions depend on provider-specific triggers (API Gateway, S3 events, SNS), IAM models, and deployment tooling. Migrating a Lambda-based architecture to Azure Functions is a significant effort. Containers are portable by design.
+
+## When to Use Which
+
+**Choose serverless when:**
+- Traffic is bursty or unpredictable (webhooks, event processing)
+- You want zero ops overhead and fast time-to-market
+- Workloads are short-lived (under 15 minutes) and stateless
+- Your team is small and can't justify dedicated DevOps capacity
+- Cost optimization at low traffic volumes is a priority
+
+**Choose containers when:**
+- You need predictable latency without cold starts
+- Workloads are long-running (servers, workers, streaming)
+- You need full control over the runtime (custom binaries, GPU access)
+- High, steady traffic makes per-request pricing expensive
+- Portability across clouds or on-premise is a requirement
+
+**Use both when:**
+- Containers handle the core API and long-running services. Serverless handles event-driven side tasks: image thumbnailing on upload, sending notification emails, processing webhook events, scheduled cleanup jobs.
+
+## Common Misconceptions
+
+**"Serverless is always cheaper."** At low volumes, yes. But a Lambda function processing 100 million requests/month with 500ms average duration can easily cost more than an equivalent container service. Always model costs at your expected scale.
+
+**"Containers are too complex for small teams."** Managed services like AWS Fargate, Google Cloud Run, and Azure Container Apps eliminate most Kubernetes complexity. Cloud Run, in particular, offers a container-based experience with serverless-like scaling (including scale-to-zero).
+
+**"Serverless means no servers."** Servers exist — you just don't manage them. But you still deal with concurrency limits, regional availability, cold start tuning, and provider-specific quotas. "Serverless" shifts operational burden; it doesn't eliminate it.
+
+**"You have to pick one."** Most production architectures use both. The containerized API handles request traffic; serverless functions handle events and glue. Choosing between them is a per-workload decision, not a platform-wide one.
+
+## Key Takeaways
+
+- Serverless is best for **event-driven, bursty, short-lived** workloads where you want zero infrastructure management. Containers are best for **steady, long-running, latency-sensitive** workloads where you need control.
+- Cold starts are the defining trade-off of serverless. If sub-100ms p99 latency matters, containers are the safer choice.
+- Cost crossover happens at moderate scale. Model your expected traffic before committing to either architecture.
+- Vendor lock-in is significantly higher with serverless. If multi-cloud or portability matters, containers (especially with Kubernetes) give you an exit path.
+- In practice, most teams use both. Let the workload characteristics — not ideology — drive the choice.

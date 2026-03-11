@@ -1,0 +1,138 @@
+---
+title: "Stack vs Queue"
+sideA: "Stack"
+sideB: "Queue"
+domains:
+  - "fundamentals"
+difficulty: "beginner"
+publishedAt: "2026-03-10"
+summary: "Two fundamental abstract data types with opposite ordering rules — LIFO vs FIFO — each powering a distinct set of algorithms and system behaviors."
+---
+
+Stacks and queues are the two most basic abstract data types for managing ordered collections where you add and remove elements one at a time. They differ in a single, decisive rule: a stack removes the most recently added item, while a queue removes the oldest. This one difference cascades into profoundly different use cases — from how your CPU manages function calls to how your operating system schedules processes.
+
+## Quick Reference
+
+| Dimension | Stack | Queue |
+|---|---|---|
+| Ordering principle | LIFO (Last In, First Out) | FIFO (First In, First Out) |
+| Primary operations | push, pop, peek | enqueue, dequeue, peek |
+| Insert complexity | O(1) | O(1) |
+| Remove complexity | O(1) | O(1) |
+| Access pattern | Only the top element | Only the front element |
+| Real-world analogy | Stack of plates | Checkout line |
+| Key algorithm | DFS, expression evaluation | BFS, scheduling |
+| Common implementations | Array, linked list | Circular array, linked list |
+
+## Stack in Depth
+
+A stack enforces Last In, First Out (LIFO) order. You can only add to the top (`push`) and remove from the top (`pop`). The element you see without removing is the top (`peek`).
+
+```python
+stack = []
+stack.append("A")   # push A → [A]
+stack.append("B")   # push B → [A, B]
+stack.append("C")   # push C → [A, B, C]
+stack.pop()          # pop → "C", stack is [A, B]
+```
+
+**Implementation options.** A stack can be backed by a dynamic array (push/pop at the end) or a singly linked list (push/pop at the head). The array-backed version has better cache performance; the linked list version avoids occasional resize copies.
+
+**Where stacks appear everywhere:**
+- **Function call stack.** When your program calls a function, it pushes a frame onto the call stack. When the function returns, the frame is popped. This is why deeply nested recursion can overflow the stack.
+- **Undo/redo.** Text editors push each action onto an undo stack. Pressing undo pops the most recent action. Redo uses a second stack.
+- **Expression evaluation.** The shunting-yard algorithm uses a stack to convert infix expressions (`3 + 4 * 2`) to postfix (`3 4 2 * +`). A second stack evaluates the postfix result.
+- **Balanced parentheses.** Push opening brackets, pop when you encounter closing brackets. If the stack is empty at the end, the expression is balanced.
+- **DFS traversal.** Depth-first search uses a stack (explicitly or via recursion) to track which nodes to visit next.
+- **Browser history.** The back button pops pages from a stack of visited URLs.
+
+**Strengths:**
+- Dead-simple semantics — three operations, all O(1)
+- Natural fit for problems involving nesting, matching, or reversal
+- Implicit in every programming language via the call stack
+
+## Queue in Depth
+
+A queue enforces First In, First Out (FIFO) order. Elements are added at the back (`enqueue`) and removed from the front (`dequeue`).
+
+```python
+from collections import deque
+queue = deque()
+queue.append("A")      # enqueue A → [A]
+queue.append("B")      # enqueue B → [A, B]
+queue.append("C")      # enqueue C → [A, B, C]
+queue.popleft()         # dequeue → "A", queue is [B, C]
+```
+
+**Implementation options.** A naive array-backed queue wastes space as the front index advances. A circular buffer (ring buffer) solves this by wrapping around, giving O(1) enqueue and dequeue with fixed memory. A linked list with head and tail pointers also provides O(1) for both operations.
+
+**Where queues appear everywhere:**
+- **BFS traversal.** Breadth-first search uses a queue to explore nodes level by level, ensuring the closest nodes are visited first.
+- **Task scheduling.** Operating system process schedulers, print job queues, and web server request queues all use FIFO ordering for fairness.
+- **Message passing.** Message queues (RabbitMQ, Kafka, SQS) are the backbone of distributed system communication.
+- **Buffering.** Keyboard input buffers, network packet buffers, and streaming data pipelines all use queues to handle producers and consumers running at different speeds.
+- **Order processing.** Any system where "first come, first served" is the rule uses a queue.
+
+**Strengths:**
+- Guarantees fairness — no element waits forever while newer elements are processed
+- Natural model for producer-consumer patterns
+- Foundation for BFS and shortest-path algorithms
+
+## Key Differences
+
+**1. The ordering rule defines the identity.** A stack reverses order (the last thing in is the first thing out). A queue preserves order (the first thing in is the first thing out). This single distinction determines which problems each structure solves naturally.
+
+**2. Algorithmic implications are profound.** Replace the queue in BFS with a stack and you get DFS. That one substitution changes the algorithm from finding shortest paths to exploring as deep as possible. The data structure is not just an implementation detail — it defines the algorithm's behavior.
+
+**3. Memory access patterns differ slightly.** An array-backed stack always works at one end, which is cache-friendly. A naive array-backed queue works at both ends, which can waste space without a circular buffer. In practice, both are fast, but the stack's single-ended access is marginally simpler to implement efficiently.
+
+**4. Stacks handle nesting; queues handle ordering.** If your problem involves matching nested structures (parentheses, HTML tags, function calls), you want a stack. If your problem involves processing items in arrival order (requests, events, tasks), you want a queue.
+
+## Variations and Extensions
+
+**Deque (double-ended queue).** Supports push and pop at both ends in O(1). A deque can serve as both a stack and a queue. Python's `collections.deque` and Java's `ArrayDeque` implement this. Useful for sliding window algorithms and work-stealing schedulers.
+
+**Priority queue.** Elements are dequeued by priority rather than arrival order. Typically implemented with a binary heap. Used in Dijkstra's algorithm, Huffman coding, and event-driven simulation. Not a FIFO queue — it is a different abstraction entirely.
+
+**Circular buffer (ring buffer).** A fixed-size array-backed queue that wraps around when it reaches the end. Used extensively in embedded systems, audio processing, and network I/O where bounded memory and O(1) operations are critical.
+
+**Min/max stack.** A stack augmented with O(1) min or max tracking. Each element is stored alongside the current minimum (or maximum), so the minimum value is always available without scanning.
+
+**Monotonic stack/queue.** Maintains elements in sorted order, used in algorithms like finding the next greater element, sliding window maximum, and histogram problems. A powerful technique in competitive programming and interview problems.
+
+## When to Use Which
+
+**Choose a stack when:**
+- You need to reverse order or process most-recent-first
+- The problem involves nesting or matching (parentheses, tags, scopes)
+- You are implementing DFS, backtracking, or undo functionality
+- You need to evaluate or parse expressions
+
+**Choose a queue when:**
+- You need to preserve order and process first-come-first-served
+- You are implementing BFS or level-order traversal
+- The problem involves scheduling, buffering, or producer-consumer patterns
+- Fairness matters — no element should be starved
+
+**Choose a deque when:**
+- You need both stack and queue behavior
+- You are implementing a sliding window algorithm
+- You want maximum flexibility with O(1) operations at both ends
+
+## Common Misconceptions
+
+**"Stacks and queues are too simple to matter."** They are simple to describe but central to computer science. The call stack is fundamental to program execution. BFS queues power shortest-path algorithms across billions of web pages. Their simplicity is their strength — they enforce invariants that make complex algorithms correct.
+
+**"A priority queue is just a fancy queue."** Despite the name, a priority queue has fundamentally different semantics. Elements exit by priority, not by arrival order. It is typically implemented as a heap, not as a linked list or circular buffer. Treating it as a queue variant leads to confusion about its behavior and complexity.
+
+**"You can always substitute one for the other."** Swapping a stack for a queue (or vice versa) changes algorithmic behavior entirely. DFS becomes BFS, depth-first expression evaluation becomes something nonsensical. The choice between LIFO and FIFO is a correctness decision, not a preference.
+
+## Key Takeaways
+
+- Stacks are LIFO (last in, first out); queues are FIFO (first in, first out).
+- Both support O(1) insertion and removal — they differ only in which element is removed.
+- Stacks power function calls, expression evaluation, undo systems, and DFS.
+- Queues power task scheduling, message passing, buffering, and BFS.
+- Swapping one for the other changes algorithm behavior fundamentally — this is not an interchangeable choice.
+- Deques generalize both, offering O(1) operations at both ends.
+- Priority queues are a separate abstraction with heap-based implementation and priority-ordered removal.

@@ -1,0 +1,119 @@
+---
+title: "Authentication vs Authorization"
+sideA: "Authentication"
+sideB: "Authorization"
+domains:
+  - "cybersecurity"
+  - "web-development"
+difficulty: "beginner"
+publishedAt: "2026-03-10"
+summary: "Authentication verifies who you are; authorization determines what you're allowed to do."
+---
+
+Authentication and authorization are two pillars of application security that are frequently confused, often abbreviated together as "auth," and almost always required in tandem. Getting either one wrong can compromise an entire system — but they solve fundamentally different problems. Authentication asks "Who are you?" while authorization asks "What are you permitted to do?" Understanding the boundary between them is the first step toward building secure software.
+
+## Quick Reference
+
+| Aspect | Authentication (AuthN) | Authorization (AuthZ) |
+|---|---|---|
+| **Core question** | "Who are you?" | "What can you do?" |
+| **Happens** | First — before authorization | Second — after identity is confirmed |
+| **Input** | Credentials (password, token, biometric) | Policies, roles, permissions |
+| **Output** | Identity confirmation or rejection | Allow or deny a specific action |
+| **Real-world analogy** | Showing your ID at the door | Your ticket determining which seats you can access |
+| **Failure code** | `401 Unauthorized` (misnomer — means unauthenticated) | `403 Forbidden` |
+| **Common standards** | OAuth 2.0 (identity layer via OIDC), SAML, WebAuthn | RBAC, ABAC, OAuth scopes, ACLs |
+
+## Authentication in Depth
+
+Authentication is the process of verifying a claimed identity. When a user types a username and password, the system checks those credentials against stored records. If they match, the system knows (with reasonable confidence) who the user is.
+
+Modern authentication goes beyond passwords. Multi-factor authentication (MFA) layers additional proof — something you know (password), something you have (phone, hardware key), and something you are (fingerprint, face). Each factor independently reduces the chance of impersonation.
+
+Common authentication flows include:
+
+- **Username/password** — the classic approach, vulnerable to phishing and credential stuffing without additional protections.
+- **OAuth 2.0 / OpenID Connect** — delegates authentication to a trusted provider (Google, GitHub). Your app never handles the password directly.
+- **Magic links / OTP** — passwordless flows that send a one-time code or link to a verified email or phone.
+- **WebAuthn / Passkeys** — cryptographic authentication using hardware-bound keys, phishing-resistant by design.
+
+After successful authentication, the system typically issues a session identifier or token so the user doesn't need to re-authenticate on every request.
+
+```
+# Simplified authentication flow
+POST /api/login
+Body: { "email": "user@example.com", "password": "s3cure!" }
+
+→ Server verifies credentials against hashed password in database
+→ Returns session cookie or JWT
+→ Subsequent requests include this token to prove identity
+```
+
+## Authorization in Depth
+
+Authorization happens after authentication. Once the system knows who you are, it must decide what you're allowed to do. This is where permissions, roles, and policies come in.
+
+The most common authorization models are:
+
+**Role-Based Access Control (RBAC)** assigns permissions to roles, then assigns roles to users. A user with the "editor" role can edit content; an "admin" can delete it. Simple, widely understood, and sufficient for most applications.
+
+**Attribute-Based Access Control (ABAC)** evaluates policies based on attributes of the user, the resource, and the environment. "Allow access if the user's department matches the document's department AND it's during business hours." More flexible, more complex.
+
+**OAuth Scopes** limit what a third-party application can do on behalf of a user. When you authorize a GitHub app with `repo:read` scope, it can view your repositories but cannot delete them — even though you could.
+
+```
+# Authorization check in an API route
+async function handleDeletePost(req, res) {
+  const user = req.user; // already authenticated
+  const post = await getPost(req.params.id);
+
+  // Authorization: does this user have permission?
+  if (post.authorId !== user.id && user.role !== 'admin') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  await deletePost(post.id);
+  return res.status(200).json({ success: true });
+}
+```
+
+## Key Differences
+
+1. **Order of operations.** Authentication always comes first. You cannot authorize an unknown user. Skipping authentication and jumping to authorization is a security gap, not a shortcut.
+
+2. **State and storage.** Authentication data is relatively static — credentials, identity records. Authorization data is relational and contextual — who has access to what, under which conditions, right now.
+
+3. **Failure semantics.** Authentication failure means the system doesn't know who you are (HTTP 401). Authorization failure means the system knows who you are but you lack permission (HTTP 403). Misusing these signals leaks information.
+
+4. **Granularity.** Authentication is binary — you're either verified or you're not. Authorization is granular — you might be able to read a resource but not update it, or access it during business hours but not after.
+
+5. **Revocation patterns.** Revoking authentication means invalidating sessions or tokens. Revoking authorization means changing permissions or roles. They happen independently — you can strip a user's admin permissions without forcing them to log in again.
+
+## When to Use Which
+
+You need **authentication** whenever your system must know who is making a request. Public APIs that serve the same content to everyone may not need it, but any system with user-specific data or actions does.
+
+You need **authorization** whenever different users should have different levels of access. If every authenticated user can do everything, you technically have authorization — it's just a single "authenticated user" role.
+
+In practice, you need both. A common architecture is:
+
+- **Middleware** handles authentication — verify the token, attach the user to the request.
+- **Route or resource handlers** handle authorization — check roles, ownership, or policies before executing the action.
+
+## Common Misconceptions
+
+**"If they're logged in, they're authorized."** This is the most dangerous misconception. Authentication without authorization means every user can do everything. Many serious breaches come from checking that a user is logged in but not checking whether they should access a specific resource (known as Insecure Direct Object Reference, or IDOR).
+
+**"401 means unauthorized."** The HTTP spec unfortunately named the 401 status code "Unauthorized" when it really means "Unauthenticated." Use 401 when there's no valid identity, 403 when the identity lacks permission.
+
+**"OAuth is for authentication."** OAuth 2.0 is an authorization framework. It tells an application what it's allowed to do on behalf of a user. OpenID Connect (OIDC) is the authentication layer built on top of OAuth. Using raw OAuth for login without OIDC leaves gaps in identity verification.
+
+**"Authorization can be handled entirely client-side."** Hiding a button in the UI is not authorization. Every permission check must be enforced server-side. Client-side checks improve UX; server-side checks enforce security.
+
+## Key Takeaways
+
+- Authentication verifies identity ("who are you"); authorization enforces permissions ("what can you do"). They are separate concerns that work in sequence.
+- Always authenticate before authorizing. Never assume a logged-in user is permitted to perform any specific action.
+- Use HTTP 401 for authentication failures and 403 for authorization failures — the distinction matters for clients and security audits.
+- Enforce authorization server-side, at the resource level. Client-side permission checks are a UX convenience, not a security boundary.
+- Choose an authorization model that fits your complexity: RBAC for most apps, ABAC when you need fine-grained, context-dependent policies.

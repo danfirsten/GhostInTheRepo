@@ -1,0 +1,147 @@
+---
+title: "npm vs yarn vs pnpm: JavaScript Package Managers Compared"
+sideA: "npm"
+sideB: "yarn & pnpm"
+domains:
+  - "terminal-and-tools"
+  - "web-development"
+difficulty: "beginner"
+publishedAt: "2026-03-10"
+summary: "A practical comparison of npm, yarn, and pnpm covering installation speed, disk usage, lockfile formats, workspace support, security, and phantom dependencies."
+---
+
+Every JavaScript project starts with a package manager, and in 2026 you have three mature options: npm (the default), yarn (the pioneer of lockfiles and workspaces), and pnpm (the efficiency-focused alternative). All three install packages from the same registry, but they differ in performance, disk usage, dependency resolution, and monorepo support. The differences matter more than you might expect.
+
+## Quick Reference
+
+| Aspect | npm | yarn (v4 Berry) | pnpm |
+|---|---|---|---|
+| Ships with Node.js | Yes | No (enable via corepack) | No (standalone install) |
+| Lockfile | `package-lock.json` | `yarn.lock` | `pnpm-lock.yaml` |
+| Install speed | Moderate | Fast | Fastest |
+| Disk usage | High (copies per project) | Moderate (PnP) or High (node_modules) | Low (content-addressable store + hard links) |
+| Phantom dependencies | Allowed | Prevented (PnP mode) | Prevented (strict node_modules) |
+| Workspaces | Built-in | Built-in (mature) | Built-in (mature) |
+| Plug'n'Play (PnP) | No | Yes (default in Berry) | No |
+| Security audit | `npm audit` | `yarn npm audit` | `pnpm audit` |
+| Patching | `npm pkg` | `yarn patch` | `pnpm patch` |
+
+## npm in Depth
+
+npm is the default package manager that ships with every Node.js installation. You do not need to install anything extra — `npm install` works out of the box on any machine with Node. This zero-setup requirement is npm's greatest advantage and the reason it remains the most widely used JavaScript package manager.
+
+```bash
+# Common npm commands
+npm install                  # install all dependencies
+npm install express          # add a dependency
+npm install -D jest          # add a dev dependency
+npm run build                # run a script
+npm audit                    # check for vulnerabilities
+npm ci                       # clean install from lockfile (CI-optimized)
+```
+
+npm creates a flat `node_modules` directory by hoisting dependencies to the top level where possible. This hoisting solves the deeply nested `node_modules` problem of npm v2, but introduces **phantom dependencies** — packages you can import in your code even though you did not declare them in `package.json`, simply because they were hoisted from a transitive dependency.
+
+```javascript
+// Phantom dependency: works because lodash is hoisted
+// from a dependency that requires it — but your package.json
+// does not list lodash. This breaks if the transitive
+// dependency stops using lodash.
+const _ = require('lodash'); // dangerous!
+```
+
+npm's `ci` command (`npm ci`) is optimized for continuous integration: it deletes `node_modules`, installs strictly from the lockfile, and fails if the lockfile is out of sync with `package.json`. This determinism is critical for reproducible builds.
+
+Performance has improved substantially since npm v7, but npm remains the slowest of the three for cold installs. Each project gets its own full copy of every dependency, consuming significant disk space across multiple projects.
+
+## yarn in Depth
+
+yarn was created by Facebook in 2016 to address npm's early shortcomings: lack of a lockfile, non-deterministic installs, and slow performance. yarn introduced the lockfile concept that npm later adopted, and has continued to innovate with features that push the ecosystem forward.
+
+yarn v4 (Berry) defaults to **Plug'n'Play (PnP)** mode, which eliminates `node_modules` entirely. Instead, yarn generates a `.pnp.cjs` file that maps package names to zip archives stored in a `.yarn/cache` directory. Node.js uses this map to resolve imports without traversing the filesystem.
+
+```bash
+# yarn Berry commands
+yarn install                 # install all dependencies
+yarn add express             # add a dependency
+yarn add -D jest             # add a dev dependency
+yarn run build               # run a script
+yarn dlx create-next-app     # execute a package (like npx)
+yarn patch lodash            # patch a dependency locally
+```
+
+PnP is yarn's most distinctive and most divisive feature. It eliminates phantom dependencies (you can only import what you declared), dramatically reduces install time (no massive `node_modules` writes), and enables **zero-installs** — checking the `.yarn/cache` into version control so that `yarn install` on a fresh clone is nearly instant.
+
+The tradeoff is **compatibility**. Some tools assume `node_modules` exists and break under PnP. While compatibility has improved enormously — Next.js, Jest, TypeScript, ESLint, and most major tools work — you may encounter edge cases with less maintained packages. yarn provides a `nodeLinker: node-modules` fallback for projects that cannot adopt PnP.
+
+yarn's workspace support is mature and well-documented, making it a popular choice for monorepos. Features like `yarn workspaces foreach` and constraint-based dependency policies give monorepo maintainers fine-grained control.
+
+## pnpm in Depth
+
+pnpm takes a fundamentally different approach to storing packages. Instead of copying dependencies into each project's `node_modules`, pnpm maintains a global **content-addressable store** and creates hard links from each project into that store. If ten projects use `lodash@4.17.21`, the package exists once on disk.
+
+```bash
+# pnpm commands
+pnpm install                 # install all dependencies
+pnpm add express             # add a dependency
+pnpm add -D jest             # add a dev dependency
+pnpm run build               # run a script
+pnpm dlx create-next-app     # execute a package (like npx)
+pnpm store prune             # clean up unreferenced packages
+```
+
+The disk savings are significant. A developer with 20 projects that share many dependencies might save 10-30 GB compared to npm. Install speed also benefits — when a package already exists in the store, pnpm only needs to create a hard link rather than download and extract it again.
+
+pnpm's `node_modules` structure uses **symlinks** to create a strict dependency tree. Each package can only access its declared dependencies, not hoisted transitive ones. This eliminates phantom dependencies by default, without requiring a non-standard resolution mechanism like PnP.
+
+```
+node_modules/
+├── .pnpm/                    # content-addressable layout
+│   ├── express@4.18.2/
+│   │   └── node_modules/
+│   │       ├── express/      # hard link to store
+│   │       ├── body-parser/  # symlink to .pnpm/body-parser@...
+│   │       └── ...
+│   └── lodash@4.17.21/
+├── express -> .pnpm/express@4.18.2/node_modules/express
+└── # only your direct dependencies appear here
+```
+
+pnpm's workspace support is comparable to yarn's, with features like `pnpm --filter` for running commands in specific packages and a `pnpm-workspace.yaml` configuration file for defining workspace packages.
+
+## Key Differences
+
+1. **Disk efficiency.** pnpm's content-addressable store eliminates duplicate package copies across projects. yarn PnP stores zipped archives that are smaller than extracted `node_modules`. npm copies everything per project.
+
+2. **Phantom dependency prevention.** pnpm and yarn PnP both prevent importing undeclared dependencies by default. npm allows it through hoisting, which can cause subtle breakage when transitive dependencies change.
+
+3. **Compatibility.** npm works everywhere with zero configuration. pnpm's symlink-based `node_modules` is compatible with virtually all tools. yarn's PnP requires tool support and may need configuration adjustments.
+
+4. **Install speed.** pnpm is consistently the fastest, especially for repeated installs where the store is warm. yarn PnP is fast because it avoids `node_modules` I/O. npm is the slowest for cold installs but `npm ci` is efficient for CI.
+
+5. **Zero-install capability.** yarn's PnP mode enables checking dependencies into version control (they are zipped and small), making clone-and-run instant. Neither npm nor pnpm offer an equivalent workflow.
+
+## When to Use Which
+
+**Choose npm when:** you want zero setup friction, maximum compatibility, and your project is small enough that install speed and disk usage are not concerns. npm is the safe default that works everywhere.
+
+**Choose yarn when:** you work on a monorepo and value mature workspace tooling. Choose yarn PnP specifically when you want zero-installs, eliminated phantom dependencies, and are willing to configure tools for PnP compatibility.
+
+**Choose pnpm when:** you care about disk space and install speed, want strict dependency isolation without the PnP compatibility tradeoff, or manage many projects on one machine. pnpm gives you most of yarn's benefits with a more conventional `node_modules` structure.
+
+## Common Misconceptions
+
+**"npm is slow and outdated."** npm v9+ is significantly faster than earlier versions and includes features like `overrides` for dependency resolution and improved `npm audit`. The gap between npm and alternatives has narrowed, though pnpm and yarn remain faster.
+
+**"You must pick one for all projects."** Each project can use a different package manager. The lockfile format signals which one to use. Corepack (built into Node.js) can enforce the correct manager per project via the `packageManager` field in `package.json`.
+
+**"yarn PnP breaks everything."** Most major frameworks and tools support PnP in 2026. The compatibility issues that plagued early adoption have been largely resolved. Test it in your project before dismissing it.
+
+**"pnpm hard links cause problems."** Hard links are a filesystem primitive supported by every modern OS. They behave identically to regular files from the perspective of any application. The only limitation is that hard links cannot cross filesystem boundaries.
+
+## Key Takeaways
+
+- All three managers install from the same registry and produce functionally identical results. The differences are in performance, disk usage, and dependency strictness.
+- pnpm offers the best combination of speed, disk efficiency, and compatibility for most projects. yarn excels in monorepo tooling and offers the unique zero-install workflow via PnP. npm is the universal default that requires no setup.
+- Phantom dependencies are a real source of production bugs. Both pnpm and yarn prevent them by default. If you use npm, audit your imports against your `package.json` regularly.
+- Use the `packageManager` field in `package.json` and corepack to enforce consistent package manager usage across your team.

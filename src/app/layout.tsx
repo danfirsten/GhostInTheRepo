@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import { Fraunces, Syne, Epilogue, JetBrains_Mono } from "next/font/google";
 import { PageShell } from "@/components/layout/PageShell";
-import { getAllDomains, getTopicsForDomain } from "@/lib/data";
-import { buildSearchItems } from "@/lib/data/search";
+import { getAllDomains, getTopicsForDomain, getAllComparisons } from "@/lib/data";
+import { buildSearchItems, addComparisonSearchItems } from "@/lib/data/search";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -63,7 +63,9 @@ function getSearchData() {
     }));
   }
 
-  return buildSearchItems(domains, topicsByDomain);
+  const items = buildSearchItems(domains, topicsByDomain);
+  const comparisons = getAllComparisons();
+  return addComparisonSearchItems(items, comparisons);
 }
 
 export default function RootLayout({

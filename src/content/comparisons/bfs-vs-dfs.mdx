@@ -1,0 +1,146 @@
+---
+title: "BFS vs DFS"
+sideA: "Breadth-First Search"
+sideB: "Depth-First Search"
+domains:
+  - "fundamentals"
+difficulty: "beginner"
+publishedAt: "2026-03-10"
+summary: "Two fundamental graph traversal strategies — one explores level by level, the other dives deep before backtracking."
+---
+
+Breadth-First Search (BFS) and Depth-First Search (DFS) are the two foundational algorithms for traversing or searching through graphs and trees. Every shortest-path algorithm, every cycle detection routine, and every topological sort descends from one of these two strategies. Understanding how they differ — in mechanics, memory usage, and what problems they naturally solve — gives you a toolkit that covers an enormous range of algorithmic challenges.
+
+## Quick Reference
+
+| Dimension | BFS | DFS |
+|---|---|---|
+| Data structure | Queue (FIFO) | Stack (LIFO) / recursion |
+| Exploration order | Level by level | Branch by branch |
+| Time complexity | O(V + E) | O(V + E) |
+| Space complexity | O(V) — width of graph | O(V) — depth of graph |
+| Shortest path (unweighted) | Yes | No |
+| Completeness | Yes (finds a node if it exists) | Yes (for finite graphs) |
+| Optimal for shortest path | Yes (unweighted) | No |
+| Natural for | Shortest paths, level-order | Topological sort, cycle detection, backtracking |
+
+V = vertices, E = edges.
+
+## Breadth-First Search in Depth
+
+BFS explores a graph layer by layer. Starting from a source node, it visits all neighbors at distance 1, then all neighbors at distance 2, and so on. It uses a queue to maintain the frontier of nodes waiting to be explored.
+
+```
+BFS(graph, start):
+    queue = [start]
+    visited = {start}
+    while queue is not empty:
+        node = queue.dequeue()
+        process(node)
+        for neighbor in graph[node]:
+            if neighbor not in visited:
+                visited.add(neighbor)
+                queue.enqueue(neighbor)
+```
+
+**Mental model.** Think of dropping a stone into a pond. The ripple expands outward in concentric circles — BFS explores nodes in exactly this pattern. Every node at distance k is visited before any node at distance k+1.
+
+**Strengths:**
+- **Guarantees shortest path** in unweighted graphs. The first time BFS reaches a node, it has found the shortest route.
+- **Complete.** If a path exists, BFS will find it, even in infinite graphs (where DFS might get lost down an infinite branch).
+- **Level-order traversal** of trees falls directly out of BFS — useful for problems that ask about tree width, depth of specific nodes, or processing nodes layer by layer.
+
+**Weaknesses:**
+- **Memory intensive.** BFS must store the entire frontier in memory. For a tree with branching factor b and depth d, the frontier can reach O(b^d) nodes. In wide, shallow graphs, this dominates.
+- **Not natural for backtracking** problems like maze solving or puzzle exploration where you want to try a path, fail, and try another.
+
+## Depth-First Search in Depth
+
+DFS explores as far down one branch as possible before backtracking. It can be implemented with an explicit stack or via recursion (which uses the call stack implicitly).
+
+```
+DFS(graph, start):
+    stack = [start]
+    visited = {start}
+    while stack is not empty:
+        node = stack.pop()
+        process(node)
+        for neighbor in graph[node]:
+            if neighbor not in visited:
+                visited.add(neighbor)
+                stack.push(neighbor)
+```
+
+Recursive version:
+```
+DFS(graph, node, visited):
+    visited.add(node)
+    process(node)
+    for neighbor in graph[node]:
+        if neighbor not in visited:
+            DFS(graph, neighbor, visited)
+```
+
+**Mental model.** Imagine exploring a maze by always choosing the leftmost unexplored path, going as deep as possible, then backing up when you hit a dead end. DFS commits fully to one direction before considering alternatives.
+
+**Strengths:**
+- **Memory efficient.** DFS only stores the nodes along the current path from root to the deepest point. For a tree of depth d, this is O(d) — dramatically less than BFS in deep, narrow structures.
+- **Natural for backtracking.** Constraint satisfaction problems, puzzle solvers, and combinatorial search are built on DFS because the algorithm inherently explores one possibility fully, then retreats.
+- **Topological sorting** of directed acyclic graphs uses DFS post-order. This is the foundation of dependency resolution in build systems, package managers, and course scheduling.
+- **Cycle detection** in directed graphs uses DFS with a recursion stack to detect back edges.
+
+**Weaknesses:**
+- **No shortest path guarantee.** DFS may find a valid path that is far longer than the shortest one.
+- **Can get trapped** in deep or infinite branches unless you add a depth limit (as in iterative deepening DFS).
+- **Stack overflow risk** with the recursive implementation on very deep graphs.
+
+## Key Differences
+
+**1. Exploration order shapes what you can guarantee.** BFS's level-by-level approach means the first time it reaches any node, it has traveled the minimum number of edges. DFS makes no such guarantee — it may reach a node via a long detour first. This is why BFS is the algorithm behind unweighted shortest path, and DFS is not.
+
+**2. Memory usage scales with different graph properties.** BFS memory grows with graph width (the maximum number of nodes at any single depth level). DFS memory grows with graph depth (the longest path from root to leaf). In a balanced binary tree with a million nodes, BFS might store 500,000 nodes in its queue at the deepest level, while DFS only stores about 20 nodes on its stack (log2 of one million). Conversely, in a very deep, narrow graph (like a linked list), DFS uses O(n) memory while BFS uses O(1).
+
+**3. DFS classifies edges; BFS measures distances.** DFS naturally partitions edges into tree edges, back edges, forward edges, and cross edges — a classification that powers cycle detection, strongly connected components (Tarjan's and Kosaraju's algorithms), and articulation point detection. BFS naturally produces a shortest-path tree with accurate distance labels.
+
+**4. Implementation flexibility.** DFS can run recursively, which makes it concise and natural for problems with recursive structure (trees, divide-and-conquer). BFS requires an explicit queue and loop — there is no clean recursive BFS.
+
+**5. Iterative deepening bridges both.** Iterative deepening DFS (IDDFS) runs DFS with increasing depth limits. It combines BFS's completeness and optimality with DFS's memory efficiency, at the cost of revisiting nodes. In practice, the overhead is modest because most nodes live at the deepest level.
+
+## When to Use Which
+
+**Choose BFS when:**
+- You need the shortest path in an unweighted graph
+- You want to explore nodes closest to the source first (e.g., social network connections by degree of separation)
+- The graph is deep but narrow, and you want to avoid getting lost in deep branches
+- You need level-order traversal of a tree
+- You are implementing algorithms like Dijkstra's (which generalizes BFS with a priority queue)
+
+**Choose DFS when:**
+- You need topological ordering of a DAG
+- You are solving backtracking problems (Sudoku, N-Queens, maze generation)
+- You want to detect cycles in a directed graph
+- Memory is constrained and the graph is wide but shallow
+- You need to find connected components or strongly connected components
+- The problem has recursive structure that maps cleanly to DFS's call pattern
+
+**Choose iterative deepening DFS when:**
+- You want shortest-path guarantees but cannot afford BFS's memory footprint
+- The depth of the solution is unknown and the branching factor is large
+
+## Common Misconceptions
+
+**"BFS is always slower than DFS."** Both have identical time complexity: O(V + E). The difference is in memory usage and what guarantees they provide, not raw speed. In practice, cache behavior and constant factors vary by implementation and graph shape.
+
+**"DFS always uses less memory."** Only when the graph is wider than it is deep. On a graph shaped like a long chain (depth n, width 1), DFS uses O(n) memory while BFS uses O(1). Memory advantage depends entirely on graph topology.
+
+**"You need BFS for all shortest-path problems."** BFS finds shortest paths in unweighted graphs. For weighted graphs, you need Dijkstra's algorithm (non-negative weights) or Bellman-Ford (negative weights). These are related to BFS in spirit but are distinct algorithms.
+
+## Key Takeaways
+
+- BFS uses a queue and explores level by level; DFS uses a stack (or recursion) and explores depth-first.
+- Both run in O(V + E) time, but their space usage scales with different graph dimensions.
+- BFS guarantees shortest paths in unweighted graphs; DFS does not.
+- DFS is the backbone of topological sort, cycle detection, and backtracking algorithms.
+- BFS memory grows with graph width; DFS memory grows with graph depth.
+- Iterative deepening DFS combines the strengths of both at a modest computational cost.
+- Choose based on what you need: shortest paths (BFS), recursive structure or ordering (DFS), or both guarantees with low memory (IDDFS).

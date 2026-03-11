@@ -1,11 +1,11 @@
-import type { Domain } from "@/types/content";
+import type { Domain, Comparison } from "@/types/content";
 
 export interface SearchItem {
   title: string;
   description: string;
   path: string;
   href: string;
-  type: "domain" | "topic" | "subtopic" | "cheatsheet";
+  type: "domain" | "topic" | "subtopic" | "cheatsheet" | "comparison";
   domainSlug: string;
 }
 
@@ -53,5 +53,25 @@ export function buildSearchItems(
     }
   }
 
+  return items;
+}
+
+/**
+ * Add comparison items to the search index.
+ */
+export function addComparisonSearchItems(
+  items: SearchItem[],
+  comparisons: Comparison[],
+): SearchItem[] {
+  for (const c of comparisons) {
+    items.push({
+      title: c.title,
+      description: c.summary,
+      path: `Comparisons → ${c.title}`,
+      href: `/comparisons/${c.slug}`,
+      type: "comparison",
+      domainSlug: c.domains[0] ?? "",
+    });
+  }
   return items;
 }

@@ -1,0 +1,174 @@
+---
+title: "Rust vs Go"
+sideA: "Rust"
+sideB: "Go"
+domains:
+  - "languages"
+  - "systems-programming"
+difficulty: "intermediate"
+publishedAt: "2026-03-10"
+summary: "Rust trades compilation speed and learning curve for zero-cost abstractions and memory safety without garbage collection, while Go prioritizes simplicity, fast builds, and built-in concurrency."
+---
+
+Rust and Go are both modern, compiled languages that emerged in the late 2000s to address real shortcomings of C and C++. But they made radically different design trade-offs. Rust chose maximum performance and safety through its ownership system, accepting a steep learning curve. Go chose simplicity and developer productivity, accepting a garbage collector and a less expressive type system. Neither is objectively better — they excel at different things, and choosing between them is a question of what your project demands.
+
+## Quick Reference
+
+| Aspect | Rust | Go |
+|---|---|---|
+| **Memory management** | Ownership + borrow checker (no GC) | Garbage collected |
+| **Compilation speed** | Slow (minutes for large projects) | Fast (seconds) |
+| **Runtime performance** | C/C++ class | Fast, with GC pauses |
+| **Concurrency model** | async/await + Send/Sync traits | Goroutines + channels |
+| **Error handling** | `Result<T, E>` + `?` operator | Multiple return values (`val, err`) |
+| **Null safety** | No null — `Option<T>` instead | `nil` exists (billion-dollar mistake) |
+| **Generics** | Yes (since 1.0, powerful trait system) | Yes (since 1.18, simpler) |
+| **Learning curve** | Steep (ownership, lifetimes, traits) | Gentle (small language, obvious idioms) |
+| **Binary size** | Small to medium (static linking) | Medium (includes Go runtime) |
+| **Ecosystem** | crates.io (~150K crates) | pkg.go.dev (large, mature) |
+| **Primary use cases** | Systems, embedded, WASM, perf-critical | Services, CLIs, cloud infrastructure |
+
+## Rust in Depth
+
+Rust's defining innovation is the **ownership system**. Every value has exactly one owner. When the owner goes out of scope, the value is dropped (freed). Borrowing rules enforce that you can have either one mutable reference or any number of immutable references — never both. This eliminates data races, use-after-free, and double-free bugs at compile time.
+
+```rust
+fn process(data: Vec<u8>) -> Vec<u8> {
+    // `data` is owned by this function
+    let mut result = data;
+    result.push(0xFF);
+    result
+    // ownership of `result` is returned to the caller
+}
+
+fn main() {
+    let buffer = vec![0x01, 0x02, 0x03];
+    let processed = process(buffer);
+    // `buffer` is no longer valid here — ownership moved to `process`
+    // println!("{:?}", buffer);  // compile error!
+    println!("{:?}", processed);
+}
+```
+
+The **borrow checker** is the compiler component that enforces these rules. It's the primary source of Rust's learning curve — beginners spend significant time "fighting the borrow checker" until ownership patterns become intuitive. The payoff is that entire categories of memory bugs simply cannot compile.
+
+**Error handling** uses the type system. Functions that can fail return `Result<T, E>`, and the `?` operator propagates errors concisely:
+
+```rust
+fn read_config(path: &str) -> Result<Config, Box<dyn Error>> {
+    let content = std::fs::read_to_string(path)?;
+    let config: Config = serde_json::from_str(&content)?;
+    Ok(config)
+}
+```
+
+**Concurrency** in Rust is built on the `Send` and `Sync` traits. The compiler verifies at compile time that data shared across threads is safe to share. Async code uses `async`/`await` with runtimes like Tokio. The result is fearless concurrency — if it compiles, it's free of data races.
+
+**Zero-cost abstractions** mean that high-level features (iterators, closures, generics) compile down to the same machine code you'd write by hand. There's no runtime overhead for Rust's safety guarantees.
+
+## Go in Depth
+
+Go was designed at Google to make large-scale software engineering productive. The language is intentionally small — you can learn all of Go in a weekend. The standard library is comprehensive, the tooling is excellent (`go fmt`, `go test`, `go vet`, `go build`), and compilation is near-instant.
+
+```go
+func process(data []byte) []byte {
+    result := make([]byte, len(data)+1)
+    copy(result, data)
+    result[len(data)] = 0xFF
+    return result
+}
+
+func main() {
+    buffer := []byte{0x01, 0x02, 0x03}
+    processed := process(buffer)
+    // `buffer` is still valid — Go uses garbage collection
+    fmt.Println(buffer)
+    fmt.Println(processed)
+}
+```
+
+**Goroutines** are Go's concurrency primitive — lightweight threads managed by the Go runtime, not the OS. Launching a goroutine costs ~2KB of stack space (vs. ~1MB for an OS thread). Channels provide safe communication between goroutines:
+
+```go
+func fetchAll(urls []string) []string {
+    results := make(chan string, len(urls))
+
+    for _, url := range urls {
+        go func(u string) {
+            resp, err := http.Get(u)
+            if err != nil {
+                results <- ""
+                return
+            }
+            defer resp.Body.Close()
+            body, _ := io.ReadAll(resp.Body)
+            results <- string(body)
+        }(url)
+    }
+
+    var bodies []string
+    for range urls {
+        bodies = append(bodies, <-results)
+    }
+    return bodies
+}
+```
+
+**Error handling** uses the `(value, error)` return pattern. It's explicit and consistent but verbose — Go code often has more `if err != nil` blocks than logic:
+
+```go
+config, err := readConfig("config.json")
+if err != nil {
+    return fmt.Errorf("reading config: %w", err)
+}
+```
+
+**Compilation speed** is a deliberate design goal. Even large Go projects compile in seconds, keeping the edit-compile-test cycle fast. Rust projects of equivalent size can take minutes.
+
+## Key Differences
+
+1. **Memory management philosophy.** Rust eliminates garbage collection through compile-time ownership rules. Go uses a modern, low-latency garbage collector. Rust gives you predictable, minimal memory usage; Go gives you simplicity at the cost of occasional GC pauses (typically sub-millisecond in recent versions).
+
+2. **Learning curve.** Go is famously easy to learn — the language has 25 keywords and a small standard library surface. Rust's ownership model, lifetime annotations, trait bounds, and macro system take weeks to months to internalize. For a team that needs to ship quickly, this matters.
+
+3. **Concurrency ergonomics.** Go's goroutines and channels are simple and built-in. Spawning concurrent work is a single `go` keyword. Rust's async model requires choosing a runtime (Tokio, async-std), understanding `Pin`, `Future`, `Send`, and `Sync`, and dealing with colored functions (async vs. sync). Rust's model is more flexible and zero-overhead, but Go's is far easier to use correctly.
+
+4. **Performance ceiling.** Rust consistently matches or beats C in benchmarks. Go is fast — much faster than Python or Java — but GC pauses, heap allocations, and bounds checking create a performance gap. For latency-sensitive systems (game engines, trading systems, embedded), this gap matters. For web services, it rarely does.
+
+5. **Type system expressiveness.** Rust's trait system supports associated types, default implementations, const generics, and higher-kinded-type patterns. Go's type system is intentionally simpler — interfaces are implicit, generics are basic, and there are no sum types. Rust can encode more invariants in types; Go keeps types easy to read.
+
+6. **Ecosystem focus.** Rust's ecosystem is strong in systems programming (embedded, WASM, game engines, CLI tools, databases). Go's ecosystem dominates cloud infrastructure (Docker, Kubernetes, Terraform, Prometheus, CockroachDB). Both have good web frameworks and HTTP libraries.
+
+## When to Use Which
+
+**Choose Rust when:**
+- Maximum performance is non-negotiable (embedded, game engines, HFT)
+- Memory safety without garbage collection is required (real-time systems)
+- You're building libraries or runtimes others will depend on
+- WebAssembly is a target
+- Correctness guarantees are worth the learning investment
+
+**Choose Go when:**
+- Building web services, APIs, and microservices
+- Developer productivity and fast iteration matter more than peak performance
+- Your team is large or has varied experience levels
+- You need a fast compilation cycle
+- Cloud-native tooling and infrastructure (the ecosystem is unmatched)
+
+## Common Misconceptions
+
+**"Rust is too hard to be productive."** The learning curve is front-loaded. Once ownership patterns click (typically 2-4 months), productivity is high because the compiler catches bugs early. Refactoring is fearless — if it compiles, entire categories of bugs are gone.
+
+**"Go is slow."** Go is slower than Rust, but it's significantly faster than Python, Ruby, Java, or Node.js for most workloads. GC pause times in Go 1.19+ are typically under 1ms. For the vast majority of web services, Go's performance is more than sufficient.
+
+**"Rust's borrow checker rejects valid programs."** It does — some safe patterns can't be expressed within ownership rules. But `unsafe` blocks, `Rc<T>`, `Arc<T>`, and interior mutability (`RefCell`, `Mutex`) provide escape hatches for these cases. The default is safety; you opt in to complexity when needed.
+
+**"Go doesn't have generics."** Go has had generics since version 1.18. They're simpler than Rust's trait-bounded generics, but they cover the majority of use cases (generic data structures, utility functions).
+
+## Key Takeaways
+
+- Rust and Go target different points on the **safety-simplicity-performance** spectrum. Rust maximizes safety and performance. Go maximizes simplicity and productivity.
+- Choose Rust when you need zero-overhead abstractions, no GC pauses, and compile-time correctness guarantees. Choose Go when you need fast development, easy onboarding, and robust concurrency for network services.
+- Rust's learning curve is real but finite. Go's simplicity is genuine but comes with less expressive power.
+- The ecosystems barely overlap: Rust dominates systems/embedded/WASM; Go dominates cloud infrastructure and backend services.
+- Many organizations use both: Go for services and tooling, Rust for performance-critical components and libraries.

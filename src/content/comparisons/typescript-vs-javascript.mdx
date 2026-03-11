@@ -1,0 +1,157 @@
+---
+title: "TypeScript vs JavaScript"
+sideA: "TypeScript"
+sideB: "JavaScript"
+domains:
+  - "languages"
+  - "web-development"
+difficulty: "beginner"
+publishedAt: "2026-03-10"
+summary: "TypeScript adds a static type system on top of JavaScript, catching errors at compile time while producing identical runtime code."
+---
+
+TypeScript is a superset of JavaScript — every valid JavaScript program is also valid TypeScript. What TypeScript adds is a static type system that analyzes your code before it runs, catching a class of bugs (typos, null references, wrong argument types) that JavaScript would only surface at runtime. TypeScript compiles to plain JavaScript, so there is zero runtime performance difference. The question is whether the type system's benefits justify the added compilation step and learning curve for your project.
+
+## Quick Reference
+
+| Aspect | TypeScript | JavaScript |
+|---|---|---|
+| **Type system** | Static (compile-time checks) | Dynamic (runtime only) |
+| **Compilation** | Required (tsc or bundler) | None (interpreted directly) |
+| **File extension** | `.ts`, `.tsx` | `.js`, `.jsx` |
+| **Runtime performance** | Identical (compiles to JS) | Baseline |
+| **IDE support** | Excellent (autocomplete, refactoring) | Good (via JSDoc or inference) |
+| **Learning curve** | JS knowledge + type syntax | Lower barrier to entry |
+| **Ecosystem** | Full JS ecosystem + `@types/*` packages | Native ecosystem |
+| **Error detection** | Compile-time + runtime | Runtime only |
+| **Adoption** | Gradual (per-file, `allowJs`) | Default |
+| **Build step** | Required | Optional |
+
+## TypeScript in Depth
+
+TypeScript's type system lets you describe the shape of your data and the contracts of your functions. The compiler (`tsc`) verifies that your code conforms to these contracts before it ever runs.
+
+```typescript
+interface User {
+  id: number;
+  name: string;
+  email: string;
+  role: 'admin' | 'member' | 'guest';
+}
+
+function greetUser(user: User): string {
+  return `Hello, ${user.name}`;
+}
+
+// Compile-time error: 'role' is missing
+greetUser({ id: 1, name: 'Alice', email: 'alice@example.com' });
+
+// Compile-time error: 'moderator' is not assignable to type 'role'
+const bob: User = {
+  id: 2, name: 'Bob', email: 'bob@example.com', role: 'moderator'
+};
+```
+
+Both errors above are caught before the code runs. In JavaScript, the first would silently pass (the function doesn't use `role`), and the second would create an object with an invalid role that might cause bugs downstream.
+
+**IDE experience** is where TypeScript delivers the most immediate value. With type information available, editors provide accurate autocomplete, inline documentation, rename-across-files refactoring, and go-to-definition that works reliably. This isn't just convenience — it meaningfully accelerates development and reduces time spent reading documentation.
+
+**Gradual adoption** is a core design principle. You can rename `.js` files to `.ts` one at a time, use `any` for types you haven't defined yet, and tighten strictness settings as the team gains confidence. The `allowJs` compiler option lets typed and untyped files coexist in the same project.
+
+TypeScript also supports **type inference**, so you don't annotate everything manually:
+
+```typescript
+// TypeScript infers: number[]
+const numbers = [1, 2, 3];
+
+// TypeScript infers: return type is number
+function add(a: number, b: number) {
+  return a + b;
+}
+```
+
+The type system includes powerful features like generics, union types, intersection types, mapped types, and conditional types. These enable libraries to provide highly accurate type definitions — for example, an ORM that infers the return type of a query based on which columns you select.
+
+## JavaScript in Depth
+
+JavaScript remains the language of the web. Every browser executes it natively, Node.js runs it on the server, and it has the largest package ecosystem in software (npm). Its dynamic nature makes it fast to prototype with and forgiving for beginners.
+
+```javascript
+function greetUser(user) {
+  return `Hello, ${user.name}`;
+}
+
+// Works fine — JS doesn't check structure
+greetUser({ name: 'Alice' });
+greetUser({ name: 'Bob', age: 30, anything: true });
+```
+
+JavaScript's flexibility is both its strength and its weakness. Functions accept any arguments, objects can have any shape, and variables can change types freely. This makes rapid prototyping fast but makes large codebases harder to maintain.
+
+**JSDoc comments** offer a middle ground — you can annotate types in comments, and modern editors (especially VS Code) will use them for autocomplete and basic type checking:
+
+```javascript
+/**
+ * @param {Object} user
+ * @param {number} user.id
+ * @param {string} user.name
+ * @returns {string}
+ */
+function greetUser(user) {
+  return `Hello, ${user.name}`;
+}
+```
+
+This gives you some IDE benefits without a compilation step, though the checking is less rigorous than TypeScript's compiler.
+
+**No build step** is a genuine advantage for small projects, scripts, and prototypes. You write a `.js` file and run it. With TypeScript, even a one-file script needs a `tsconfig.json` and a compilation step (or a runner like `tsx` / `ts-node`).
+
+## Key Differences
+
+1. **Error detection timing.** TypeScript catches type errors, misspelled property names, and incorrect function calls at compile time. JavaScript surfaces these as runtime errors — often in production, often intermittently, often in edge cases your tests didn't cover.
+
+2. **Refactoring confidence.** Renaming a property, changing a function signature, or restructuring data in TypeScript triggers compile errors everywhere the old code is used. In JavaScript, you rely on find-and-replace and hope you didn't miss anything.
+
+3. **Documentation as code.** TypeScript interfaces and type annotations serve as living documentation. When a function declares `(user: User) => Promise<Order[]>`, you know exactly what it accepts and returns without reading the implementation. JavaScript requires comments or reading source code.
+
+4. **Compilation overhead.** TypeScript requires a build step. For large projects, this can add 10-60 seconds to builds (mitigated by tools like `esbuild`, `swc`, and `tsc --incremental`). JavaScript projects skip this entirely.
+
+5. **Learning curve.** TypeScript adds concepts: generics, utility types, declaration files, `tsconfig` options, type narrowing. Beginners already learning JavaScript fundamentals may find this overwhelming. The type system itself has depth that takes months to master.
+
+6. **Runtime behavior.** TypeScript types are erased at compile time. The JavaScript that runs in the browser or Node.js is identical whether it was written in TS or JS. There is no runtime performance benefit or penalty.
+
+## When to Use Which
+
+**Choose TypeScript when:**
+- The project will be maintained by a team (types are communication)
+- The codebase will grow beyond a few thousand lines
+- You're building APIs, libraries, or anything with complex data shapes
+- Refactoring safety and IDE tooling matter to your workflow
+- You're using a framework that has first-class TS support (Next.js, Angular, SvelteKit)
+
+**Choose JavaScript when:**
+- Writing quick scripts, prototypes, or throwaway code
+- The project is small and unlikely to grow
+- You're learning programming fundamentals (types add cognitive load)
+- The project is a simple static site or configuration script
+- Build tooling needs to be minimal or nonexistent
+
+## Common Misconceptions
+
+**"TypeScript is a different language from JavaScript."** It's a superset. All JavaScript is valid TypeScript. You're adding a type layer on top, not learning a new language. If you know JS, you already know most of TS.
+
+**"TypeScript makes code run faster."** It doesn't. Types are erased during compilation. The output is plain JavaScript with identical runtime characteristics. TypeScript's value is developer experience and correctness, not performance.
+
+**"You have to type everything."** TypeScript's inference engine is powerful. In practice, you explicitly annotate function parameters and return types, and the compiler infers the rest. Over-annotating is a common beginner mistake.
+
+**"TypeScript guarantees no runtime errors."** It doesn't. TypeScript catches type errors, but runtime exceptions (network failures, invalid JSON, out-of-bounds access) still happen. It also can't verify types at runtime boundaries — data from an API call is typed as `any` unless you add runtime validation (with libraries like Zod or io-ts).
+
+**"JavaScript is dying."** JavaScript runs on every browser, every server platform, and many embedded devices. TypeScript compiles *to* JavaScript. JS isn't going anywhere — TS is an enhancement layer, not a replacement.
+
+## Key Takeaways
+
+- TypeScript adds compile-time type checking to JavaScript. The runtime code is identical — types are erased during compilation.
+- The biggest practical benefit is **IDE experience**: autocomplete, refactoring, and inline error detection dramatically improve productivity.
+- Adoption is gradual. You can add TypeScript to an existing JS project one file at a time, using `allowJs` and `any` as escape hatches.
+- For small scripts and prototypes, plain JavaScript is simpler and faster to start. For anything that will grow or be maintained by others, TypeScript pays for itself quickly.
+- TypeScript doesn't eliminate runtime errors. It catches a specific (large) class of bugs at compile time and makes codebases easier to understand and refactor.

@@ -1,0 +1,139 @@
+---
+title: "Hash Table vs Tree Map"
+sideA: "Hash Table"
+sideB: "Tree Map"
+domains:
+  - "fundamentals"
+difficulty: "intermediate"
+publishedAt: "2026-03-10"
+summary: "Two map implementations trading off average-case speed against guaranteed ordering and worst-case predictability."
+---
+
+When you need a key-value store, two implementations dominate: hash tables and tree-based maps. Hash tables offer O(1) average-case lookups by converting keys into array indices. Tree maps offer O(log n) guaranteed lookups by maintaining keys in sorted order within a balanced tree. The choice between them depends on whether you need speed, ordering, or predictable worst-case behavior — and understanding the tradeoffs is essential for writing performant, correct code.
+
+## Quick Reference
+
+| Dimension | Hash Table | Tree Map |
+|---|---|---|
+| Get / Put / Delete (average) | O(1) | O(log n) |
+| Get / Put / Delete (worst case) | O(n)* | O(log n) |
+| Ordering | None (unordered) | Sorted by key |
+| Iteration order | Unpredictable** | Ascending key order |
+| Range queries | Not supported | O(log n + k) for k results |
+| Memory overhead | Array + chains/probing | Nodes + child pointers + color/balance bits |
+| Key requirement | hashCode + equals | Comparable or Comparator |
+| Nearest-neighbor queries | Not supported | O(log n) — floor, ceiling |
+
+*O(n) worst case occurs with pathological hash collisions. Modern implementations mitigate this.
+**Some implementations like Java's `LinkedHashMap` maintain insertion order.
+
+## Hash Table in Depth
+
+A hash table maps keys to values by computing a hash function on the key, reducing it to an array index, and storing the value there. When two keys map to the same index (a collision), the table resolves the conflict using one of two strategies.
+
+**Chaining** stores a linked list (or, in modern implementations, a balanced tree) at each bucket. On collision, the new entry is appended to the chain. Java's `HashMap` switches from a linked list to a red-black tree when a bucket exceeds 8 entries — a significant improvement for pathological cases.
+
+**Open addressing** (linear probing, quadratic probing, Robin Hood hashing) stores all entries directly in the array, probing for the next open slot on collision. This approach has better cache performance because data stays in a contiguous array. Python's `dict` and Rust's `HashMap` use variants of open addressing.
+
+**Load factor and resizing.** The load factor (entries / capacity) determines when the table resizes. Most implementations resize at a load factor of 0.75, doubling the array and rehashing all entries. This is an O(n) operation but happens infrequently enough that amortized insertion remains O(1).
+
+**Strengths:**
+- **Fastest average case.** O(1) for get, put, and delete when the hash function distributes keys well.
+- **Simple API.** No ordering requirement on keys — anything with a hash function and equality check works.
+- **Widely optimized.** Hash tables are among the most studied and tuned data structures in practice. Standard library implementations are highly optimized.
+
+**Weaknesses:**
+- **No ordering.** You cannot iterate keys in sorted order, find the nearest key, or perform range queries.
+- **Worst-case degeneration.** If all keys hash to the same bucket, operations degrade to O(n). Good hash functions and resizing strategies mitigate this, but adversarial inputs can still cause problems (hash-flooding attacks).
+- **Hash function quality matters.** A poor hash function causes clustering, increasing collision rates and degrading performance. Custom objects need carefully implemented hash functions.
+
+### Real-World Implementations
+
+| Language | Hash Table | Notes |
+|---|---|---|
+| Java | `HashMap` | Chaining with tree-ification at 8 entries |
+| Python | `dict` | Open addressing, insertion-ordered since 3.7 |
+| JavaScript | `Map`, plain objects | V8 uses complex hybrid strategies |
+| C++ | `std::unordered_map` | Chaining by default |
+| Rust | `HashMap` | Robin Hood hashing (SwissTable since 1.36) |
+| Go | `map` | Chaining with incremental resizing |
+
+## Tree Map in Depth
+
+A tree map stores key-value pairs in a self-balancing binary search tree — typically a red-black tree or AVL tree. Keys are maintained in sorted order at all times, and the balancing guarantees ensure no operation takes more than O(log n) time.
+
+**Red-black trees** (used by Java's `TreeMap`, C++'s `std::map`, and .NET's `SortedDictionary`) maintain balance through node coloring rules and rotations. They guarantee that the longest path from root to leaf is no more than twice the shortest, keeping the height at O(log n).
+
+**AVL trees** maintain stricter balance (height difference of at most 1 between subtrees), resulting in faster lookups but slightly more expensive insertions due to more frequent rotations.
+
+**Strengths:**
+- **Guaranteed O(log n) for all operations.** No worst-case degeneration. Every get, put, and delete is bounded.
+- **Sorted iteration.** Iterating over all entries yields keys in ascending order with no extra sorting step.
+- **Range queries.** Efficiently find all keys between a lower and upper bound in O(log n + k), where k is the number of results.
+- **Nearest-neighbor operations.** Finding the floor (largest key at or below the target) or ceiling (smallest key at or above the target) is O(log n). Hash tables cannot do this at all.
+- **No hash function needed.** Keys only need a total ordering (comparable), which is often simpler to define correctly than a good hash function.
+
+**Weaknesses:**
+- **Slower by constant factor.** O(log n) is fundamentally slower than O(1) for large n. For a million entries, log2(1,000,000) is about 20 — so each tree map operation does roughly 20 comparisons versus one hash computation and (on average) one or two probes.
+- **Higher memory overhead.** Each node stores left and right child pointers, a parent pointer (in some implementations), and a color or balance bit. This adds 24-40 bytes per entry on a 64-bit system.
+- **Worse cache performance.** Tree nodes are allocated individually on the heap, scattered in memory. Traversal causes cache misses at each level.
+
+### Real-World Implementations
+
+| Language | Tree Map | Tree Type |
+|---|---|---|
+| Java | `TreeMap` | Red-black tree |
+| C++ | `std::map` | Red-black tree (typically) |
+| C# | `SortedDictionary` | Red-black tree |
+| Python | `sortedcontainers.SortedDict` | B-tree-like (third party) |
+| Rust | `BTreeMap` | B-tree |
+
+Note that Rust chose a B-tree rather than a binary tree for its ordered map. B-trees store multiple keys per node, which improves cache performance significantly — a pragmatic choice that narrows the speed gap with hash tables.
+
+## Key Differences
+
+**1. Average-case speed vs worst-case guarantees.** Hash tables win on average by a wide margin. But their O(n) worst case — while rare with good implementations — is real. Tree maps provide O(log n) regardless of input distribution. In latency-sensitive systems where consistent response times matter, this predictability is valuable.
+
+**2. Ordering is the decisive feature.** If you ever need to iterate keys in order, find the closest key to a value, or query a range of keys, a tree map is the right choice. Hash tables simply cannot provide these operations without sorting the entire key set first.
+
+**3. Key requirements differ.** Hash tables need a hash function and equality check. Tree maps need a comparison function (total ordering). For some types, one is easier to provide correctly than the other. Floating-point keys, for instance, are notoriously tricky to hash but straightforward to compare.
+
+**4. Memory and cache trade-offs.** Hash tables with open addressing pack data into a flat array with excellent cache locality. Tree maps scatter nodes across the heap. For large maps with small values, hash tables use less memory and run faster in practice due to cache effects.
+
+**5. Concurrent access patterns differ.** Concurrent hash tables (like Java's `ConcurrentHashMap`) use fine-grained locking or lock-free techniques on individual buckets. Concurrent tree maps (like Java's `ConcurrentSkipListMap`) typically use skip lists instead of red-black trees, trading some constant-factor speed for better concurrent performance.
+
+## When to Use Which
+
+**Choose a hash table when:**
+- You need the fastest possible lookups and ordering does not matter
+- Keys have a good hash function (strings, integers, UUIDs)
+- Memory efficiency is important and values are small
+- You are building caches, indices, or deduplication sets
+- The vast majority of operations are point lookups (get by exact key)
+
+**Choose a tree map when:**
+- You need keys in sorted order for iteration or display
+- You need range queries (all keys between X and Y)
+- You need nearest-neighbor queries (floor, ceiling, lower, higher)
+- Worst-case O(log n) guarantees matter (real-time systems, latency SLAs)
+- Keys are difficult to hash but easy to compare
+- You are implementing an ordered index, interval tree, or calendar-based lookup
+
+**In most application code, hash tables are the default.** Use a tree map when you need its specific capabilities — ordering, ranges, or guarantees. Do not pay the constant-factor cost of O(log n) when O(1) suffices.
+
+## Common Misconceptions
+
+**"Hash tables are always O(1)."** The O(1) is an average-case bound that assumes a good hash function and reasonable load factor. With adversarial inputs, a naive hash table degrades to O(n). Modern implementations mitigate this (Java's tree-ification, randomized hashing in Python), but it is not technically constant-time in all cases.
+
+**"Tree maps are too slow to use in practice."** For collections under a few thousand entries, the difference between O(1) and O(log n) is negligible — a few nanoseconds. Tree maps are used extensively in database engines (B-trees), file systems, and standard libraries. They are slower, not slow.
+
+**"You can just sort a hash table's keys when you need order."** Sorting is O(n log n) and produces a snapshot that is immediately stale after the next insertion. A tree map maintains sorted order incrementally at O(log n) per operation. If you need order frequently, the tree map is more efficient overall.
+
+## Key Takeaways
+
+- Hash tables provide O(1) average-case operations but no ordering; tree maps provide O(log n) guaranteed operations with full key ordering.
+- Use hash tables as the default for key-value storage — they are faster for point lookups by a significant constant factor.
+- Use tree maps when you need sorted iteration, range queries, nearest-neighbor lookups, or worst-case guarantees.
+- Hash table performance depends on hash function quality; tree map performance depends on comparison cost.
+- Real-world implementations are highly optimized — Java's `HashMap` tree-ifies on collision, Rust uses B-trees for its ordered map.
+- The choice is not "better vs worse" but "right tool for the requirement." Most applications use both — hash tables for fast lookups, tree-based structures for ordered access.

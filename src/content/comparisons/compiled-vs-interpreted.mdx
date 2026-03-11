@@ -1,0 +1,166 @@
+---
+title: "Compiled vs Interpreted Languages"
+sideA: "Compiled"
+sideB: "Interpreted"
+domains:
+  - "languages"
+  - "fundamentals"
+difficulty: "beginner"
+publishedAt: "2026-03-10"
+summary: "Compiled languages translate source code to machine code before execution for maximum performance, while interpreted languages execute code line-by-line for flexibility and faster development cycles."
+---
+
+Every programming language must bridge the gap between human-readable source code and machine instructions that a CPU can execute. Compiled languages cross that bridge before your program runs — a compiler translates the entire source into a native binary ahead of time. Interpreted languages cross it during execution — an interpreter reads and executes code line by line (or statement by statement). In practice, the line between these categories has blurred significantly: JIT compilers, bytecode, and transpilation create a spectrum rather than a binary. Understanding where different languages fall on this spectrum explains a lot about their performance characteristics, developer experience, and deployment models.
+
+## Quick Reference
+
+| Aspect | Compiled (AOT) | Interpreted | Bytecode/JIT (Hybrid) |
+|---|---|---|---|
+| **Translation** | Before execution | During execution | Both (compile to bytecode, JIT at runtime) |
+| **Output** | Native binary | None (source executed directly) | Bytecode + runtime optimization |
+| **Startup time** | Fast (binary is ready) | Slow (must parse/compile) | Medium (bytecode loads fast, JIT warms up) |
+| **Runtime speed** | Fastest | Slowest | Near-compiled after warmup |
+| **Distribution** | Binary (platform-specific) | Source code + interpreter | Bytecode + runtime (cross-platform) |
+| **Error detection** | Compile time (many errors) | Runtime only | Compile time (some) + runtime |
+| **Debug cycle** | Edit → compile → run | Edit → run | Edit → run (with build for some) |
+| **Examples** | C, C++, Rust, Go | Python, Ruby, Bash, Perl | Java, C#, Kotlin, Elixir |
+
+## Compiled Languages in Depth
+
+A compiled language uses an **ahead-of-time (AOT) compiler** to translate source code into machine code specific to a target platform (x86, ARM, etc.) before the program runs. The output is a standalone binary that the operating system executes directly.
+
+```c
+// hello.c
+#include <stdio.h>
+
+int main() {
+    printf("Hello, world\n");
+    return 0;
+}
+```
+
+```bash
+# Compile to native binary
+gcc -o hello hello.c
+
+# Run the binary — no compiler/interpreter needed
+./hello
+```
+
+The compilation step is where type checking, optimization, and error detection happen. The compiler can analyze the entire program, inline functions, unroll loops, eliminate dead code, and optimize memory layout. This is why compiled languages are consistently the fastest at runtime.
+
+**Distribution** means shipping a binary. Users don't need the compiler or source code — just the executable for their platform. The downside is that you must compile separately for each target: Linux x86, macOS ARM, Windows x64, etc. Cross-compilation tools (Go excels here) mitigate this.
+
+**Compile times** are the trade-off. A small C file compiles instantly, but large C++ or Rust projects can take minutes. This slows the development feedback loop. Languages like Go were specifically designed for fast compilation — large Go projects compile in seconds.
+
+Common compiled languages: **C** (systems, embedded), **C++** (games, databases, browsers), **Rust** (systems, safety-critical), **Go** (services, tooling).
+
+## Interpreted Languages in Depth
+
+An interpreted language uses an **interpreter** — a program that reads source code and executes it directly, translating each statement to machine operations on the fly. There is no separate compilation step.
+
+```python
+# hello.py — just run it
+print("Hello, world")
+```
+
+```bash
+# The Python interpreter reads and executes the source
+python hello.py
+```
+
+The interpreter handles parsing, type checking (if any), and execution in a single pass. This means errors are only discovered when the problematic line is reached:
+
+```python
+def greet(name):
+    print(f"Hello, {name}")
+    print(f"Your name has {len(naem)} letters")  # typo: 'naem'
+
+greet("Alice")
+# "Hello, Alice" prints successfully
+# Then crashes on the typo — only caught at runtime
+```
+
+In a compiled language, the typo would be caught during compilation before the program ever runs.
+
+**The development cycle is fast.** Edit a file, run it. No compilation step, no build system, no waiting. For scripting, prototyping, and exploratory work, this speed is valuable.
+
+**Distribution** means shipping source code plus requiring the interpreter on the target machine. Users need Python installed to run Python scripts, Ruby installed for Ruby scripts, etc. Packaging tools (PyInstaller, pkg) can bundle an interpreter with your code, but the result is large and platform-specific.
+
+**Performance** is the trade-off. Interpreting code at runtime is 10-100x slower than executing a pre-compiled binary for CPU-intensive workloads. For I/O-bound tasks (web servers, file processing), the difference is often negligible because the program spends most of its time waiting on network or disk.
+
+Common interpreted languages: **Python** (data science, scripting, web), **Ruby** (web, scripting), **PHP** (web), **Bash/PowerShell** (system administration), **Perl** (text processing).
+
+## The Hybrid Middle Ground: Bytecode and JIT
+
+Many modern languages don't fit neatly into compiled or interpreted. They use a two-stage approach: compile source code to **bytecode** (an intermediate representation), then execute that bytecode in a **virtual machine** that may include a **JIT (just-in-time) compiler**.
+
+```java
+// Hello.java
+public class Hello {
+    public static void main(String[] args) {
+        System.out.println("Hello, world");
+    }
+}
+```
+
+```bash
+# Step 1: Compile to bytecode (.class file)
+javac Hello.java
+
+# Step 2: JVM executes bytecode, JIT-compiles hot paths
+java Hello
+```
+
+The **JIT compiler** monitors which code paths execute frequently ("hot paths") and compiles them to native machine code at runtime. After warmup, JIT-compiled code can approach — and occasionally match — AOT-compiled performance. The JVM (Java), V8 (JavaScript), and CLR (C#) all use this strategy.
+
+**JavaScript** is the most notable example. V8 (Chrome, Node.js) compiles JavaScript to optimized machine code at runtime, which is why Node.js can serve millions of requests per second despite JavaScript being "interpreted."
+
+**Bytecode** provides portability. Java bytecode runs on any platform with a JVM. C# bytecode (CIL) runs on any .NET runtime. You compile once and distribute the bytecode — the JIT handles platform-specific optimization. This is the "write once, run anywhere" promise.
+
+## Key Differences
+
+1. **Startup time vs. steady-state performance.** Compiled binaries start instantly — the code is already optimized. JIT languages need warmup time as the runtime identifies and compiles hot paths. Pure interpreters parse fresh every time. For short-lived scripts, this matters. For long-running servers, steady-state performance dominates.
+
+2. **Error detection.** Compiled languages catch many errors (types, syntax, undefined references) before execution. Interpreted languages discover errors only when the faulty line runs. This fundamentally changes how confident you are in untested code paths.
+
+3. **Distribution model.** Compiled: ship a binary (platform-specific, no dependencies). Interpreted: ship source + require runtime. Bytecode: ship bytecode + require VM. Each model has different implications for deployment, security (source exposure), and cross-platform support.
+
+4. **Development speed.** Interpreted languages have the tightest edit-run loop. Compiled languages add a build step. For rapid prototyping and scripting, the interpreted model wins. For large projects where compile-time checks prevent bugs, the compiled model wins.
+
+## When to Use Which
+
+**Compiled languages are ideal for:**
+- Performance-critical applications (operating systems, game engines, databases)
+- Embedded systems with limited resources
+- Distributable tools (single binary, no runtime dependency)
+- Applications where latency and throughput are primary concerns
+
+**Interpreted languages are ideal for:**
+- Scripting and automation (Bash, Python)
+- Rapid prototyping and exploratory programming
+- Data analysis and visualization (Python, R)
+- Applications where development speed matters more than runtime speed
+
+**Bytecode/JIT languages are ideal for:**
+- Enterprise applications that need cross-platform portability (Java, C#)
+- Long-running server applications (JIT warmup amortized over hours)
+- Ecosystems with large standard libraries and mature tooling
+
+## Common Misconceptions
+
+**"Interpreted languages are always slow."** For CPU-bound computation, yes — there's a significant gap. But most applications are I/O-bound (waiting on databases, APIs, file systems). Python web servers handle millions of daily users. JavaScript (via V8's JIT) powers some of the highest-traffic services on the internet.
+
+**"Compiled means fast, interpreted means slow."** The spectrum is more nuanced. JIT-compiled Java often outperforms compiled Go for long-running workloads because the JIT can optimize for actual runtime behavior in ways that AOT compilers cannot.
+
+**"JavaScript is interpreted."** Technically, modern engines (V8, SpiderMonkey) JIT-compile JavaScript to machine code. Calling it "interpreted" is historically accurate but practically misleading. It's a JIT-compiled language running on a high-performance VM.
+
+**"You have to choose one paradigm."** Many projects use both. A Python application might call a compiled C extension for heavy computation (NumPy). A Go service might embed a Lua interpreter for user-defined scripting. The boundaries are practical, not ideological.
+
+## Key Takeaways
+
+- **Compiled** languages (C, Rust, Go) translate to machine code before execution. Maximum performance, but you pay with compile times and platform-specific binaries.
+- **Interpreted** languages (Python, Ruby) execute source code directly. Maximum development speed, but runtime performance is significantly lower for CPU-bound tasks.
+- **Bytecode/JIT** languages (Java, C#, JavaScript via V8) compile to an intermediate format, then optimize at runtime. They offer a middle ground: portability, good steady-state performance, and cross-platform distribution.
+- The practical difference matters most for CPU-intensive work. For I/O-bound applications (most web services), the gap between compiled and interpreted is often negligible.
+- Modern language implementations blur the line. Focus on the specific language's actual performance characteristics rather than its category label.

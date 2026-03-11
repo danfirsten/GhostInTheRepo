@@ -1,0 +1,134 @@
+---
+title: "TDD vs BDD: Red-Green-Refactor Meets Given-When-Then"
+sideA: "TDD"
+sideB: "BDD"
+domains:
+  - "software-engineering"
+difficulty: "intermediate"
+publishedAt: "2026-03-10"
+summary: "A detailed comparison of Test-Driven Development and Behavior-Driven Development covering workflow, audience, tooling, and when each approach delivers the most value."
+---
+
+Test-Driven Development and Behavior-Driven Development both advocate writing tests before production code, but they serve different audiences and answer different questions. TDD asks "does this unit of code work correctly?" BDD asks "does this system behave the way stakeholders expect?" Understanding the distinction helps you choose the right practice for your team, or combine both effectively.
+
+## Quick Reference
+
+| Aspect | TDD | BDD |
+|---|---|---|
+| Core cycle | Red → Green → Refactor | Define behavior → Implement → Verify |
+| Test format | Code assertions (xUnit style) | Natural language scenarios (Given/When/Then) |
+| Primary audience | Developers | Developers, QA, product owners |
+| Scope | Single unit or class | Feature or user-facing behavior |
+| Tooling | JUnit, pytest, Jest, RSpec | Cucumber, SpecFlow, Behave, Jest (BDD style) |
+| Documentation | Tests serve as developer docs | Scenarios serve as living specifications |
+| Granularity | Fine-grained (method level) | Coarse-grained (feature level) |
+| Mocking | Heavy use of mocks/stubs | Minimal — prefers real interactions |
+
+## TDD in Depth
+
+Test-Driven Development follows a strict three-step loop. **Red**: write a failing test for the next small increment of functionality. **Green**: write the minimum production code to make the test pass. **Refactor**: clean up the code while keeping all tests green.
+
+```python
+# RED: write a failing test first
+def test_stack_is_empty_on_creation():
+    stack = Stack()
+    assert stack.is_empty() is True
+
+# GREEN: minimal implementation
+class Stack:
+    def __init__(self):
+        self._items = []
+
+    def is_empty(self):
+        return len(self._items) == 0
+
+# Next cycle: test push, then implement push...
+```
+
+The discipline of TDD forces you to think about the interface before the implementation. By writing the test first, you design the API from the caller's perspective. This naturally leads to smaller functions, fewer dependencies, and more testable code. The refactor step ensures the design stays clean as the codebase grows.
+
+TDD excels at **design feedback**. If a test is hard to write, it is usually a signal that the code is too tightly coupled or has too many responsibilities. The tests apply continuous pressure toward better design — smaller classes, dependency injection, separation of concerns.
+
+The rhythm of TDD is fast. Each red-green-refactor cycle takes one to five minutes. Over the course of an hour, you might complete a dozen cycles, each one adding a small, verified increment of functionality. The result is a comprehensive unit test suite that grows in lockstep with the production code.
+
+TDD's weakness is **scope blindness**. It verifies that individual units work correctly but does not guarantee that the units compose into the behavior stakeholders expect. You can have a perfectly TDD'd codebase where every class is thoroughly tested, yet the feature does not meet the business requirement because the tests were written from a developer's mental model rather than the user's.
+
+## BDD in Depth
+
+Behavior-Driven Development, popularized by Dan North, emerged as a response to TDD's focus on implementation. BDD shifts the conversation from "test this method" to "describe this behavior." Scenarios are written in a structured natural language format that non-developers can read, review, and even co-author.
+
+```gherkin
+Feature: Shopping cart discount
+  As a returning customer
+  I want to receive a loyalty discount
+  So that I save money on repeat purchases
+
+  Scenario: 10% discount for returning customers
+    Given a returning customer with 5 previous orders
+    And a cart total of $100.00
+    When the customer proceeds to checkout
+    Then the displayed total should be $90.00
+    And the discount label should show "Loyalty: 10% off"
+```
+
+Each `Given/When/Then` step maps to a **step definition** — a function that sets up state, triggers an action, or asserts an outcome. Frameworks like Cucumber (Java/JS/Ruby), SpecFlow (.NET), and Behave (Python) parse the Gherkin scenarios and execute the corresponding code.
+
+```javascript
+// Step definition (Cucumber.js)
+Given('a returning customer with {int} previous orders', function (orderCount) {
+  this.customer = createCustomer({ previousOrders: orderCount });
+});
+
+When('the customer proceeds to checkout', function () {
+  this.result = checkout(this.customer, this.cart);
+});
+
+Then('the displayed total should be ${float}', function (expected) {
+  assert.strictEqual(this.result.total, expected);
+});
+```
+
+BDD scenarios serve as **living documentation**. When the business rule changes, you update the scenario first, watch it fail, then update the code. Product owners can read the scenarios to verify that the team understood the requirements correctly — a feedback loop that catches misunderstandings before code is written.
+
+The cost of BDD is **overhead**. Maintaining Gherkin files, step definitions, and the mapping between them adds a layer of indirection. Step definitions can become a tangled library of shared state if not carefully organized. For small teams where developers are the primary audience, the natural-language layer may add ceremony without proportional benefit.
+
+## Key Differences
+
+1. **Audience and language.** TDD tests are written in code, by developers, for developers. BDD scenarios are written in structured English (or any language), intended to be readable by anyone involved in the product — QA engineers, product managers, designers.
+
+2. **Scope of verification.** TDD typically operates at the unit level, testing individual functions and classes. BDD operates at the feature level, testing complete behaviors that map to user stories or acceptance criteria.
+
+3. **Design influence.** TDD drives internal code design — smaller classes, better interfaces, inversion of control. BDD drives external feature design — ensuring the system does what stakeholders expect.
+
+4. **Specification ownership.** In TDD, the developer owns the tests. In BDD, scenarios are ideally a shared artifact. The "three amigos" practice (developer, QA, product) collaborating on scenarios before development is a hallmark of BDD done well.
+
+5. **Refactoring safety.** TDD's comprehensive unit tests make internal refactoring safe — you can restructure classes with confidence. BDD scenarios are resilient to refactoring by nature, since they describe external behavior rather than internal structure.
+
+## When to Use Which
+
+**Choose TDD when:** you are building complex internal logic — algorithms, state machines, data transformations, parsers. TDD shines when correctness at the unit level is critical and the primary audience for the tests is developers.
+
+**Choose BDD when:** you need shared understanding between technical and non-technical team members. BDD is valuable when requirements are complex, ambiguous, or frequently misunderstood. The Gherkin scenarios become a contract that everyone can read.
+
+**Combine both when:** you want the best of both worlds. Write BDD scenarios for feature-level acceptance criteria, then use TDD to implement the underlying units. The BDD scenarios define *what* the system should do; the TDD tests verify *how* the code achieves it.
+
+**Skip BDD when:** your team is small, everyone is technical, and the natural language layer adds overhead without improving communication. Writing expressive tests in code (using descriptive names and arrange-act-assert structure) can capture behavior without the Gherkin abstraction.
+
+## Common Misconceptions
+
+**"BDD is just TDD with different syntax."** The syntax is a surface difference. The deeper distinction is that BDD is a collaborative requirements practice. If you write Gherkin scenarios without involving stakeholders, you are writing acceptance tests, not practicing BDD.
+
+**"TDD means 100% code coverage."** TDD means writing tests before code, not testing every line. Getters, setters, and trivial delegation code do not need dedicated tests. The goal is a design feedback loop, not a coverage number.
+
+**"BDD is slow because it uses a browser."** BDD scenarios can execute at any level. Many teams run Gherkin scenarios against API endpoints or service layers, which are fast. Browser-based execution is an option, not a requirement.
+
+**"You must choose one or the other."** TDD and BDD address different concerns and coexist naturally. BDD for the outer loop (does the feature work?) and TDD for the inner loop (does this function work?) is a proven combination.
+
+**"TDD slows you down."** Initial development may feel slower because you write tests first. However, TDD dramatically reduces time spent debugging, manually testing, and fixing regressions. The net effect over weeks and months is faster delivery with fewer defects.
+
+## Key Takeaways
+
+- TDD is a developer-centric design practice that produces well-tested, well-designed code through the red-green-refactor cycle. BDD is a collaborative specification practice that ensures the team builds the right thing.
+- Use TDD when the challenge is implementation correctness. Use BDD when the challenge is shared understanding of requirements.
+- BDD scenarios are most valuable when they are co-authored by developers, QA, and product owners. Without that collaboration, they become an extra layer of test code with little added benefit.
+- The two practices complement each other. BDD defines the desired behavior; TDD drives the clean implementation of that behavior.

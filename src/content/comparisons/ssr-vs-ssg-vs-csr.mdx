@@ -1,0 +1,154 @@
+---
+title: "SSR vs SSG vs CSR: Web Rendering Strategies"
+sideA: "SSR & SSG"
+sideB: "CSR"
+domains:
+  - "web-development"
+difficulty: "intermediate"
+publishedAt: "2026-03-10"
+summary: "A deep dive into server-side rendering, static site generation, and client-side rendering — how each works, what they optimize for, and how modern frameworks blend them."
+---
+
+Every web page has to get HTML into the browser somehow. The three fundamental rendering strategies — server-side rendering (SSR), static site generation (SSG), and client-side rendering (CSR) — represent different answers to the question of _where_ and _when_ that HTML is produced. Modern frameworks increasingly blur the lines between these approaches, but understanding each in isolation is essential before you can reason about hybrid architectures.
+
+## Quick Reference
+
+| Aspect | SSR | SSG | CSR |
+|---|---|---|---|
+| **HTML generated** | On each request (server) | At build time | In the browser (JavaScript) |
+| **Time to First Byte** | Slower (server processing) | Fastest (pre-built, CDN-cached) | Fast (minimal HTML shell) |
+| **Time to Interactive** | Moderate (hydration needed) | Moderate (hydration needed) | Slow (JS must download, parse, execute) |
+| **SEO** | Excellent | Excellent | Poor without workarounds |
+| **Dynamic content** | Real-time data per request | Stale until rebuild | Real-time via API calls |
+| **Server required** | Yes (Node.js, Edge, etc.) | No (static file host) | No (static file host) |
+| **Caching** | Harder (per-request) | Trivial (immutable files) | N/A (HTML is empty shell) |
+| **Typical use case** | E-commerce, dashboards | Blogs, docs, marketing | SPAs, internal tools |
+
+## SSR & SSG in Depth
+
+### Server-Side Rendering (SSR)
+
+With SSR, the server executes your application code on every incoming request, producing a complete HTML document that is sent to the browser. The user sees content immediately, even before JavaScript loads. Once JS arrives, the page **hydrates** — React (or Vue, etc.) attaches event listeners to the existing DOM, making it interactive.
+
+```
+Browser Request → Server runs component tree → Full HTML response → Browser paints → JS hydrates
+```
+
+SSR excels when content depends on the request — user-specific data, search results, real-time inventory. The tradeoff is server cost and latency: every page view requires compute. Caching helps (CDN edge caching, stale-while-revalidate headers), but cache invalidation is notoriously hard for personalized content.
+
+**Streaming SSR** (React 18+, Next.js App Router) improves this further by sending HTML in chunks as components resolve. The browser can start rendering the shell while data-heavy sections are still loading on the server, dramatically improving perceived performance.
+
+```jsx
+// Next.js App Router — this component runs on the server
+async function ProductPage({ params }) {
+  const product = await db.products.find(params.id);
+  return (
+    <main>
+      <h1>{product.name}</h1>
+      <Suspense fallback={<ReviewsSkeleton />}>
+        <Reviews productId={params.id} />
+      </Suspense>
+    </main>
+  );
+}
+```
+
+### Static Site Generation (SSG)
+
+SSG runs your application at **build time**, producing plain HTML files for every route. These files are deployed to a CDN and served without any server processing. The result is the fastest possible Time to First Byte — the HTML is pre-built and geographically distributed.
+
+```
+Build step: component tree → HTML files → Deploy to CDN
+Browser Request → CDN serves pre-built HTML → Browser paints → JS hydrates
+```
+
+SSG is ideal for content that changes infrequently: documentation, blogs, marketing sites, changelogs. The limitation is staleness — if your data changes, you must rebuild and redeploy.
+
+**Incremental Static Regeneration (ISR)**, pioneered by Next.js, addresses this. Pages are statically generated but can be revalidated in the background after a configurable interval:
+
+```jsx
+// Next.js Pages Router
+export async function getStaticProps() {
+  const posts = await fetchBlogPosts();
+  return {
+    props: { posts },
+    revalidate: 60, // Regenerate at most every 60 seconds
+  };
+}
+```
+
+ISR gives you SSG-level performance with near-real-time content freshness — a compelling middle ground.
+
+## CSR in Depth
+
+Client-side rendering ships a minimal HTML shell (often just a `<div id="root">`) and a JavaScript bundle. The browser downloads, parses, and executes the JavaScript, which then fetches data from APIs and constructs the entire DOM.
+
+```html
+<!-- What the server sends -->
+<!DOCTYPE html>
+<html>
+  <body>
+    <div id="root"></div>
+    <script src="/app.bundle.js"></script>
+  </body>
+</html>
+```
+
+```
+Browser Request → Empty HTML shell → Download JS → Execute JS → Fetch data → Render UI
+```
+
+The user sees a blank page (or a loading spinner) until JavaScript completes. This makes CSR the worst strategy for **First Contentful Paint** and **SEO** — search engine crawlers may not execute JavaScript reliably, though Google's crawler has improved significantly.
+
+CSR shines for **highly interactive applications** behind authentication: dashboards, admin panels, design tools, IDEs. These apps behave like desktop software — routing happens client-side without full page reloads, state persists across navigation, and the server is reduced to a pure API.
+
+**Code splitting** mitigates bundle size problems. Modern bundlers (Vite, webpack) can split your application into route-based chunks, loading only the JavaScript needed for the current page:
+
+```jsx
+// React lazy loading
+const Dashboard = React.lazy(() => import('./pages/Dashboard'));
+const Settings = React.lazy(() => import('./pages/Settings'));
+```
+
+## Key Differences
+
+1. **Where HTML is born**: SSR generates HTML on the server per request. SSG generates it once at build time. CSR generates it in the browser at runtime. This single distinction cascades into every other difference.
+
+2. **SEO and social sharing**: SSR and SSG deliver complete HTML that crawlers and link preview bots can parse immediately. CSR requires JavaScript execution, which many bots skip or handle poorly. If organic search traffic matters, SSR or SSG is essential.
+
+3. **Infrastructure requirements**: SSG needs only a static file host (Netlify, Vercel, S3 + CloudFront). CSR is the same. SSR requires a running server — Node.js, Edge Functions, or a serverless platform — adding cost and operational complexity.
+
+4. **Data freshness**: CSR and SSR can show real-time data. SSG shows data from the last build (unless using ISR or client-side fetching on top). The freshness-vs-performance tradeoff is the core tension.
+
+5. **Performance profile**: SSG has the best TTFB. SSR has the best balance of freshness and initial paint. CSR has the worst initial paint but the smoothest in-app navigation once loaded.
+
+6. **Hydration cost**: Both SSR and SSG must "hydrate" on the client — attaching JavaScript interactivity to server-rendered HTML. This is not free: large component trees can block interactivity for hundreds of milliseconds. Techniques like React Server Components, partial hydration (Astro islands), and resumability (Qwik) are actively solving this.
+
+## When to Use Which
+
+**Choose SSG when** your content changes infrequently (docs, blogs, landing pages), you want maximum performance with minimal infrastructure, and you can tolerate a build step for updates. Add ISR if you need periodic freshness without full rebuilds.
+
+**Choose SSR when** every request needs fresh, personalized, or real-time data (e-commerce product pages, social feeds, search results), and SEO is important. Streaming SSR with Suspense boundaries gives the best user experience for data-heavy pages.
+
+**Choose CSR when** SEO is irrelevant (the app is behind a login wall), the application is highly interactive and state-heavy, and you want the simplest deployment model. Internal tools, admin dashboards, and SaaS products are classic CSR candidates.
+
+**Choose a hybrid approach** (which most modern frameworks support) when different pages have different needs. A marketing homepage can be SSG, product pages can use SSR with caching, and the user dashboard can be CSR — all within the same Next.js or Nuxt application.
+
+## Common Misconceptions
+
+- **"CSR is bad."** CSR is the wrong choice for content sites, but it is perfectly appropriate for application UIs behind authentication. Gmail, Figma, and VS Code for the Web are all CSR.
+
+- **"SSR is always slower than SSG."** SSR with aggressive caching (CDN edge caching, stale-while-revalidate) can approach SSG performance while maintaining data freshness. The gap is smaller than people assume.
+
+- **"SSG cannot handle dynamic content."** SSG pages can fetch data client-side after hydration. You get the fast initial paint of static HTML, then enrich it with real-time data — a pattern sometimes called "static shell with client fetch."
+
+- **"You have to pick one strategy for your whole site."** Modern frameworks (Next.js, Nuxt, SvelteKit) let you choose the rendering strategy per route. This is the norm now, not the exception.
+
+- **"Hydration is free."** Server-rendered HTML looks fast but is not interactive until hydration completes. On slow devices, the gap between "I can see the button" and "the button works" can frustrate users. Measuring Time to Interactive, not just First Contentful Paint, is critical.
+
+## Key Takeaways
+
+- SSR, SSG, and CSR answer the same question — where does HTML come from — with different performance, SEO, and infrastructure tradeoffs.
+- SSG is the performance king for static content. SSR wins for dynamic, SEO-critical content. CSR is right for interactive apps behind authentication.
+- Modern frameworks treat rendering strategy as a per-route decision, not an all-or-nothing choice. Learn all three and apply each where it fits.
+- Hydration is the hidden cost of server-rendered JavaScript apps. Watch for emerging solutions like React Server Components, Astro Islands, and Qwik's resumability.

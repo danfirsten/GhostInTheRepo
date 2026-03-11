@@ -1,0 +1,155 @@
+---
+title: "REST vs gRPC: Text-Based Simplicity vs Binary Performance"
+sideA: "REST"
+sideB: "gRPC"
+domains:
+  - "networking"
+  - "web-development"
+difficulty: "intermediate"
+publishedAt: "2026-03-10"
+summary: "REST uses HTTP/1.1 with JSON for broad compatibility and simplicity; gRPC uses HTTP/2 with Protocol Buffers for high-performance, type-safe service communication."
+---
+
+When services need to talk to each other, the two dominant paradigms are REST and gRPC. REST has been the default choice for web APIs since the mid-2000s — it is simple, human-readable, and works everywhere. gRPC, open-sourced by Google in 2015, takes a different approach: binary serialization, strict contracts, and HTTP/2 streaming. Neither is universally superior. The right choice depends on who your consumers are, what performance you need, and how much control you have over both ends of the connection.
+
+## Quick Reference
+
+| Feature | REST | gRPC |
+|---|---|---|
+| **Transport** | HTTP/1.1 (typically) | HTTP/2 |
+| **Serialization** | JSON (text) | Protocol Buffers (binary) |
+| **Contract** | OpenAPI/Swagger (optional) | `.proto` files (required) |
+| **Code generation** | Optional (various tools) | Built-in (first-class) |
+| **Streaming** | Limited (SSE, chunked transfer) | Bidirectional streaming native |
+| **Browser support** | Native | Requires gRPC-Web proxy |
+| **Human readability** | Excellent (JSON + URLs) | Poor (binary on the wire) |
+| **Payload size** | Larger (text + field names) | Smaller (binary + field numbers) |
+| **Latency** | Higher | Lower |
+| **Learning curve** | Low | Moderate |
+
+## REST in Depth
+
+REST (Representational State Transfer) is an architectural style, not a protocol. In practice, "REST API" means HTTP endpoints that accept and return JSON, organized around resources identified by URLs.
+
+### Resource-oriented design
+
+REST maps CRUD operations to HTTP methods:
+
+```
+GET    /api/users          # List users
+GET    /api/users/42       # Get user 42
+POST   /api/users          # Create a user
+PUT    /api/users/42       # Replace user 42
+PATCH  /api/users/42       # Partially update user 42
+DELETE /api/users/42       # Delete user 42
+```
+
+This convention makes APIs discoverable and predictable. A developer can guess endpoint patterns without reading documentation.
+
+### Strengths
+
+- **Universality.** Every programming language, every platform, and every browser can make HTTP requests and parse JSON. There is zero setup cost for consumers.
+- **Tooling.** curl, Postman, browser dev tools, and countless libraries make REST trivial to debug and test. You can inspect payloads in plain text.
+- **Cacheability.** HTTP caching (ETags, Cache-Control, CDNs) works out of the box with GET requests. This is a major advantage for read-heavy public APIs.
+- **Loose coupling.** REST APIs can evolve by adding fields without breaking existing clients, since JSON parsing is typically lenient.
+
+### Weaknesses
+
+JSON is verbose — field names are repeated in every object, and text encoding is larger than binary. HTTP/1.1 opens a new connection per request (or uses keep-alive with head-of-line blocking). There is no built-in schema enforcement, so clients and servers can drift out of sync silently.
+
+## gRPC in Depth
+
+gRPC (gRPC Remote Procedure Call) defines services and messages in `.proto` files, generates client and server code in dozens of languages, and communicates over HTTP/2 using Protocol Buffers — a compact binary serialization format.
+
+### Contract-first development
+
+A `.proto` file defines both the data structures and the service interface:
+
+```protobuf
+syntax = "proto3";
+
+service UserService {
+  rpc GetUser (GetUserRequest) returns (User);
+  rpc ListUsers (ListUsersRequest) returns (stream User);
+  rpc Chat (stream Message) returns (stream Message);
+}
+
+message GetUserRequest {
+  int32 id = 1;
+}
+
+message User {
+  int32 id = 1;
+  string name = 2;
+  string email = 3;
+}
+```
+
+Running `protoc` generates strongly-typed client stubs and server interfaces. The compiler catches breaking changes at build time, not at runtime.
+
+### Streaming
+
+gRPC supports four communication patterns natively:
+
+1. **Unary** — single request, single response (like REST)
+2. **Server streaming** — single request, stream of responses
+3. **Client streaming** — stream of requests, single response
+4. **Bidirectional streaming** — both sides stream simultaneously
+
+This makes gRPC natural for real-time feeds, file uploads, and long-lived connections that would require WebSockets or SSE in a REST world.
+
+### Performance
+
+Protocol Buffers encode data as compact binary with field numbers instead of names. A typical payload is 30-50% smaller than equivalent JSON. Combined with HTTP/2 multiplexing (multiple requests over a single TCP connection) and header compression (HPACK), gRPC achieves significantly lower latency and bandwidth usage in benchmarks — often 2-10x faster for serialization/deserialization compared to JSON.
+
+## Key Differences
+
+1. **Serialization cost.** JSON requires parsing text, allocating strings, and matching field names. Protobuf decodes binary directly into native types using field offsets. For high-throughput services processing thousands of requests per second, this difference compounds significantly.
+
+2. **Schema enforcement.** gRPC mandates a `.proto` contract — both sides know the exact shape of every message at compile time. REST schemas (OpenAPI) are optional documentation that may not match reality. gRPC catches breaking changes earlier in the development cycle.
+
+3. **Streaming model.** REST is fundamentally request-response. Server-Sent Events and WebSockets exist but are bolted on separately. gRPC treats streaming as a first-class concept with typed, multiplexed streams over a single connection.
+
+4. **Browser compatibility.** REST works natively in every browser with `fetch()`. gRPC requires a gRPC-Web proxy (like Envoy) because browsers do not expose raw HTTP/2 framing to JavaScript. This makes REST the clear winner for public-facing web APIs.
+
+5. **Observability and debugging.** REST payloads are human-readable JSON you can inspect with curl or browser dev tools. gRPC traffic is binary — you need specialized tools like `grpcurl`, Bloom RPC, or Wireshark with Protobuf dissectors to inspect messages.
+
+6. **Service mesh integration.** gRPC's use of HTTP/2 and well-defined service contracts integrates naturally with service meshes like Istio and Linkerd. Load balancing gRPC requires L7 awareness since HTTP/2 multiplexes over a single TCP connection — naive L4 load balancers send all traffic to one backend.
+
+## When to Use Which
+
+**Choose REST when:**
+- Building public APIs consumed by third parties or browsers
+- Human readability and easy debugging are priorities
+- You need HTTP caching (CDNs, browser cache)
+- Your team is small and does not want the overhead of managing `.proto` files
+- The API is CRUD-oriented with moderate traffic
+
+**Choose gRPC when:**
+- Building internal microservice communication where you control both ends
+- Low latency and high throughput are critical (real-time systems, data pipelines)
+- You need bidirectional streaming
+- You want compile-time safety across polyglot services (Go backend, Python ML service, Java gateway)
+- Payload size matters (mobile clients on limited bandwidth)
+
+### The hybrid approach
+
+Many production architectures use both: gRPC for internal service-to-service communication and a REST or GraphQL API gateway for external consumers. The gateway translates between formats, giving you gRPC's performance internally and REST's accessibility externally. Frameworks like gRPC-gateway for Go automate this translation from `.proto` definitions.
+
+## Common Misconceptions
+
+- **"REST is a protocol."** REST is an architectural style. What most people call REST is actually "JSON over HTTP." True REST includes hypermedia controls (HATEOAS), which almost nobody implements in practice.
+
+- **"gRPC is only for Google-scale systems."** gRPC benefits any system with multiple services communicating frequently. Even a two-service architecture gains type safety and streaming. The overhead of maintaining `.proto` files is modest.
+
+- **"gRPC replaces REST."** They serve different audiences. gRPC is poorly suited for public APIs consumed by browsers. REST is poorly suited for high-frequency internal service calls. They are complementary, not competitive.
+
+- **"JSON is slow."** For most applications, JSON serialization is not the bottleneck. The difference matters at scale — thousands of requests per second with large payloads. Profile before optimizing.
+
+## Key Takeaways
+
+- REST excels at public-facing, browser-compatible APIs with broad tooling support and human-readable payloads.
+- gRPC excels at internal service communication with strict contracts, compact binary payloads, and native streaming.
+- gRPC's `.proto` contracts provide compile-time safety across languages — a significant advantage in polyglot microservice architectures.
+- The industry trend is toward using both: gRPC internally for performance and REST (or GraphQL) externally for accessibility.
+- Choose based on your consumers, not on benchmarks — the fastest API that nobody can consume is useless.

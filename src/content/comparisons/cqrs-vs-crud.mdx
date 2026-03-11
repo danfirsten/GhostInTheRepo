@@ -1,0 +1,153 @@
+---
+title: "CQRS vs CRUD: Separating Reads from Writes"
+sideA: "CQRS"
+sideB: "CRUD"
+domains:
+  - "software-engineering"
+difficulty: "advanced"
+publishedAt: "2026-03-10"
+summary: "A detailed comparison of CQRS and CRUD covering read/write separation, event sourcing, scaling strategies, complexity costs, and when simple CRUD is the right answer."
+---
+
+CRUD is the default data access pattern: Create, Read, Update, Delete through a single model. CQRS (Command Query Responsibility Segregation) splits that model in two — one optimized for writes, another optimized for reads. This separation unlocks independent scaling, specialized storage, and event sourcing, but at a steep complexity cost. Understanding when CQRS earns its keep prevents both premature architecture and missed optimization opportunities.
+
+## Quick Reference
+
+| Aspect | CRUD | CQRS |
+|---|---|---|
+| Data model | Single model for reads and writes | Separate read model and write model |
+| Consistency | Immediate (same database) | Eventual (read model updated asynchronously) |
+| Complexity | Low | High |
+| Scaling | Scale the whole database | Scale reads and writes independently |
+| Storage | One database | Often two or more (write store + read store) |
+| Event sourcing | Optional, uncommon | Natural pairing |
+| Query flexibility | Limited by write schema | Read model shaped for each query pattern |
+| Best for | Most applications | High-read/write asymmetry, complex domains |
+
+## CQRS in Depth
+
+CQRS, formalized by Greg Young and popularized alongside Domain-Driven Design, is built on a simple observation: the data shape that is optimal for writing is rarely optimal for reading. An order system might write normalized rows across `orders`, `order_items`, and `payments` tables (good for consistency), but the dashboard needs a denormalized view joining all three with aggregated totals (good for queries).
+
+In CQRS, **commands** represent intentions to change state: `PlaceOrder`, `CancelSubscription`, `UpdateShippingAddress`. The write model (command side) validates the command against business rules, persists the change, and publishes an event.
+
+**Queries** read from a separate model that is optimized for the specific view. The read model might be a denormalized SQL view, an Elasticsearch index, a Redis cache, or a materialized view in a different database entirely.
+
+```typescript
+// Command side: validate and persist
+async function handlePlaceOrder(command: PlaceOrderCommand): Promise<void> {
+  const customer = await customerRepo.findById(command.customerId);
+  if (!customer.isActive) throw new Error('Customer account is inactive');
+
+  const order = Order.create({
+    customerId: command.customerId,
+    items: command.items,
+    total: calculateTotal(command.items),
+  });
+
+  await orderWriteRepo.save(order);
+  await eventBus.publish(new OrderPlacedEvent(order));
+}
+
+// Query side: read from optimized view
+async function getOrderDashboard(customerId: string): Promise<DashboardView> {
+  // Reads from a denormalized read-optimized store
+  return await readStore.query(`
+    SELECT order_id, status, total, item_count, placed_at
+    FROM order_dashboard_view
+    WHERE customer_id = $1
+    ORDER BY placed_at DESC
+  `, [customerId]);
+}
+```
+
+The read model is updated by **event handlers** (also called projections) that listen for events from the write side. When an `OrderPlacedEvent` is published, a projection updates the `order_dashboard_view` table. This happens asynchronously, which means there is a window — typically milliseconds to seconds — where the read model has not yet caught up.
+
+**Event sourcing** is a natural companion to CQRS. Instead of storing current state in the write model, you store the sequence of events that produced that state: `OrderPlaced`, `PaymentReceived`, `ItemShipped`. The current state is derived by replaying events. This gives you a complete audit trail, the ability to rebuild read models from scratch, and temporal queries ("what was this order's state at 3pm yesterday?").
+
+```
+Event Store (write side):
+  OrderPlaced { orderId: 1, items: [...], total: 99.00, at: T1 }
+  PaymentReceived { orderId: 1, transactionId: "tx_abc", at: T2 }
+  ItemShipped { orderId: 1, trackingId: "TRK123", at: T3 }
+
+Read Model (query side):
+  ┌─────────┬────────┬───────┬────────────┬─────────────┐
+  │ orderId │ status │ total │ trackingId │ lastUpdated │
+  │ 1       │ shipped│ 99.00 │ TRK123     │ T3          │
+  └─────────┴────────┴───────┴────────────┴─────────────┘
+```
+
+The complexity cost is substantial. You now have two data models to maintain, an event publishing pipeline, projection code that transforms events into read views, and eventual consistency that your API and UI must handle. Error handling gets harder: what if a projection fails? You need idempotent projections, dead letter queues, and monitoring for projection lag.
+
+## CRUD in Depth
+
+CRUD is straightforward: a single data model serves both reads and writes. You insert a row, read it back, update it, delete it. The same `orders` table handles the `POST /orders` endpoint and the `GET /orders/:id` endpoint. The same ORM model maps to both operations.
+
+```python
+# CRUD: one model, one database, full consistency
+class OrderService:
+    def create_order(self, data: OrderCreate) -> Order:
+        order = Order(**data.dict())
+        self.db.add(order)
+        self.db.commit()
+        return order
+
+    def get_order(self, order_id: int) -> Order:
+        return self.db.query(Order).get(order_id)
+
+    def update_order(self, order_id: int, data: OrderUpdate) -> Order:
+        order = self.db.query(Order).get(order_id)
+        for key, value in data.dict(exclude_unset=True).items():
+            setattr(order, key, value)
+        self.db.commit()
+        return order
+```
+
+CRUD gives you **immediate consistency**. After a write, every subsequent read reflects that write. There is no projection lag, no eventual consistency, no reconciliation. For the vast majority of applications — admin panels, content management systems, e-commerce sites with moderate traffic, internal tools — this is exactly what you need.
+
+The limitation appears when **read and write patterns diverge significantly**. If your write model is a normalized relational schema (good for data integrity) but your reads need complex aggregations across multiple tables (expensive JOINs), you end up with slow queries or database views that are hard to optimize. Similarly, if you have 1,000 reads per write, scaling the entire database to handle read load wastes resources on the write side.
+
+CRUD also conflates the concepts of commands and queries in your API design. A `PUT /orders/:id` endpoint both receives input and returns the updated entity. This coupling is usually fine, but in complex domains it can lead to bloated endpoints that try to serve multiple purposes.
+
+## Key Differences
+
+1. **Model count.** CRUD uses one model for everything. CQRS uses at least two — a write model optimized for validation and persistence, and one or more read models optimized for specific query patterns. More models mean more code and more synchronization logic.
+
+2. **Consistency guarantee.** CRUD offers immediate consistency by default. CQRS introduces eventual consistency between the write and read sides. Your application must handle the window where a write has been accepted but the read model has not yet updated.
+
+3. **Scaling granularity.** CRUD scales the entire database uniformly. CQRS lets you scale reads and writes independently — put the read model on a globally replicated cache while keeping the write model on a single primary database.
+
+4. **Query optimization.** In CRUD, complex queries fight against a schema designed for writes. In CQRS, each read model is shaped for its specific query, eliminating expensive JOINs and enabling specialized storage (Elasticsearch for search, Redis for counters, SQL for relational queries).
+
+5. **Audit and history.** CRUD overwrites state — you lose the history of changes unless you add audit logging. CQRS with event sourcing preserves every state change as an immutable event, providing a complete history by default.
+
+6. **Development velocity.** CRUD is faster to implement, easier to understand, and requires less infrastructure. CQRS has a higher upfront cost that pays off only when the domain complexity or scaling requirements justify it.
+
+## When to Use Which
+
+**Choose CRUD when:** your application has balanced read/write ratios, moderate traffic, straightforward queries, and a single team maintaining it. This covers the vast majority of web applications, APIs, and internal tools.
+
+**Choose CQRS when:** your read and write patterns are dramatically different — for example, a system that ingests thousands of sensor readings per second (writes) while serving dashboard aggregations to hundreds of users (reads). Other signals: the domain model is complex enough that write validation and read projection genuinely benefit from different shapes.
+
+**Choose CQRS with event sourcing when:** you need a complete audit trail, temporal queries, or the ability to rebuild read models from scratch. Financial systems, compliance-heavy industries, and systems with complex event-driven workflows are natural fits.
+
+**Stay with CRUD and optimize when:** you have a performance problem, not an architectural one. Adding database indexes, read replicas, caching layers, and materialized views to a CRUD system often solves read performance without the complexity of full CQRS.
+
+## Common Misconceptions
+
+**"CQRS is always better because it scales."** CQRS scales better when read and write loads are asymmetric. If your reads and writes are balanced and moderate, CQRS adds complexity without proportional benefit. A well-indexed PostgreSQL instance handles more traffic than most applications ever see.
+
+**"You need event sourcing with CQRS."** CQRS and event sourcing are independent patterns that complement each other. You can implement CQRS with a traditional relational database on the write side and a separate read-optimized database on the query side, without event sourcing.
+
+**"CRUD cannot handle high traffic."** Read replicas, connection pooling, caching (Redis), CDNs, and database optimization handle enormous traffic within a CRUD architecture. Twitter was CRUD for years before introducing more complex patterns. Optimize before you architect.
+
+**"Eventual consistency is unacceptable for users."** Users already experience eventual consistency everywhere. When you post on social media, there is a delay before all followers see it. When you transfer money between banks, it takes hours. The question is whether your specific use case can tolerate a delay of milliseconds to seconds.
+
+**"CQRS means microservices."** CQRS is a pattern within a single application or bounded context. You can implement it in a monolith with two database tables. The pattern does not require microservices, message brokers, or distributed infrastructure — though it often coexists with them.
+
+## Key Takeaways
+
+- CRUD is the right default for most applications. A single model with immediate consistency is simpler to build, debug, and maintain. Do not introduce CQRS until you have a specific problem that CRUD cannot solve efficiently.
+- CQRS shines when read and write patterns diverge significantly — different data shapes, different scaling requirements, or different storage technologies. The complexity cost is justified only when these asymmetries are real and significant.
+- Event sourcing pairs naturally with CQRS but is not required. Add it when you need audit trails, temporal queries, or the ability to rebuild read models from history.
+- The path from CRUD to CQRS is incremental. Start with a CRUD application, add a read replica, then add a materialized view, then add asynchronous projection. Full CQRS is the end of a spectrum, not a binary switch.
