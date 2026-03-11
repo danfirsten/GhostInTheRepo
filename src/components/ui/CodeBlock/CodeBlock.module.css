@@ -1,5 +1,5 @@
 .codeBlock {
-  background: #0A0E18;
+  background: var(--code-bg);
   border: 1px solid var(--border-ghost);
   border-radius: var(--radius-lg);
   overflow: hidden;
@@ -13,7 +13,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 10px 16px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--code-header-bg);
   border-bottom: 1px solid var(--border-ghost);
 }
 
@@ -46,7 +46,7 @@
 
 .actionBtn:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--code-btn-hover);
 }
 
 .copied {

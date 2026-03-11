@@ -3,7 +3,7 @@
   position: fixed;
   inset: 0;
   z-index: 300;
-  background: rgba(5, 8, 15, 0.92);
+  background: var(--backdrop-color);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   display: flex;

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { MagnifyingGlass, List, X, SignIn } from "@phosphor-icons/react";
 import { GhostLogo } from "@/components/ui/GhostLogo";
 import { UserMenu } from "@/components/auth/UserMenu/UserMenu";
+import { ThemeToggle } from "@/components/ui/ThemeToggle/ThemeToggle";
 import { useHeroPage } from "@/lib/hooks/useHeroPage";
 import styles from "./Navbar.module.css";
 import type { User } from "@supabase/supabase-js";
@@ -84,6 +85,8 @@ export function Navbar({ onSearchOpen, user }: NavbarProps) {
               ? "⌘K"
               : "Ctrl+K"}
           </span>
+
+          <ThemeToggle />
 
           {/* Auth: User menu or sign-in link */}
           {user ? (

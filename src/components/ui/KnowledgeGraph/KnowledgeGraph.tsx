@@ -101,7 +101,7 @@ export function KnowledgeGraph({ domains, paths }: KnowledgeGraphProps) {
       .selectAll<SVGLineElement, GraphEdge>("line")
       .data(edges)
       .join("line")
-      .attr("stroke", "rgba(167, 139, 250, 0.2)")
+      .attr("stroke", "var(--glow-violet)")
       .attr("stroke-width", 1.5)
       .attr("stroke-dasharray", (d) =>
         d.type === "related" ? "6 4" : "none",
@@ -119,8 +119,8 @@ export function KnowledgeGraph({ domains, paths }: KnowledgeGraphProps) {
     nodeG
       .append("circle")
       .attr("r", 24)
-      .attr("fill", "#171F30")
-      .attr("stroke", "#A78BFA")
+      .attr("fill", "var(--surface-raised)")
+      .attr("stroke", "var(--spectral-1)")
       .attr("stroke-width", 1.5);
 
     // Label
@@ -129,7 +129,7 @@ export function KnowledgeGraph({ domains, paths }: KnowledgeGraphProps) {
       .text((d) => d.label)
       .attr("text-anchor", "middle")
       .attr("dy", 42)
-      .attr("fill", "#9AA3B5")
+      .attr("fill", "var(--text-secondary)")
       .style("font-family", "var(--font-ui)")
       .style("font-size", "11px")
       .style("font-weight", "500")
@@ -141,7 +141,7 @@ export function KnowledgeGraph({ domains, paths }: KnowledgeGraphProps) {
       .text((d) => d.label.charAt(0))
       .attr("text-anchor", "middle")
       .attr("dy", 5)
-      .attr("fill", "#A78BFA")
+      .attr("fill", "var(--spectral-1)")
       .style("font-family", "var(--font-ui)")
       .style("font-size", "14px")
       .style("font-weight", "700")

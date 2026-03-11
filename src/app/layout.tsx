@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Fraunces, Syne, Epilogue, JetBrains_Mono } from "next/font/google";
 import { PageShell } from "@/components/layout/PageShell";
+import { ThemeProvider } from "@/lib/hooks/useTheme";
+import { ThemeScript } from "@/components/ui/ThemeScript/ThemeScript";
 import { getAllDomains, getTopicsForDomain, getAllComparisons } from "@/lib/data";
 import { buildSearchItems, addComparisonSearchItems } from "@/lib/data/search";
 import "./globals.css";
@@ -79,9 +81,15 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${fraunces.variable} ${syne.variable} ${epilogue.variable} ${jetbrainsMono.variable}`}
+      suppressHydrationWarning
     >
+      <head>
+        <ThemeScript />
+      </head>
       <body>
-        <PageShell searchItems={searchItems}>{children}</PageShell>
+        <ThemeProvider>
+          <PageShell searchItems={searchItems}>{children}</PageShell>
+        </ThemeProvider>
       </body>
     </html>
   );

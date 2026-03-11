@@ -19,6 +19,7 @@ html {
   text-rendering: optimizeLegibility;
   scroll-behavior: smooth;
   color-scheme: dark;
+  transition: color-scheme 0ms;
 }
 
 body {
@@ -97,6 +98,26 @@ ol {
   /* ---- The Ghost White — special use only ---- */
   --ghost-white: #F0F4FF;
 
+  /* ---- Contextual surfaces (used by some components) ---- */
+  --surface-card: #111827;
+  --text-muted: #5A6478;
+
+  /* ---- Overlay & backdrop colors ---- */
+  --backdrop-color: rgba(5, 8, 15, 0.92);
+  --navbar-frosted: rgba(8, 12, 21, 0.8);
+  --drawer-backdrop: rgba(5, 8, 15, 0.7);
+  --code-bg: #0A0E18;
+  --code-header-bg: rgba(255, 255, 255, 0.03);
+  --code-btn-hover: rgba(255, 255, 255, 0.05);
+
+  /* ---- Elevation shadows ---- */
+  --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --shadow-3: 0 8px 32px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.4);
+
+  /* ---- Particle color ---- */
+  --particle-color: rgba(255, 255, 255, 0.6);
+
   /* ---- Spacing ---- */
   --space-1: 0.25rem;   /* 4px */
   --space-2: 0.5rem;    /* 8px */
@@ -164,6 +185,84 @@ ol {
 }
 
 /* ----------------------------------------------------------
+   Light Theme Overrides
+   ---------------------------------------------------------- */
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* ---- Backgrounds ---- */
+  --void: #F1F5F9;
+  --abyss: #F8FAFC;
+  --deep: #F1F5F9;
+  --surface: #FFFFFF;
+  --surface-raised: #FFFFFF;
+  --surface-float: #FFFFFF;
+
+  /* ---- Borders ---- */
+  --border-ghost: rgba(0, 0, 0, 0.06);
+  --border-subtle: rgba(0, 0, 0, 0.10);
+  --border-soft: rgba(0, 0, 0, 0.14);
+  --border-medium: rgba(0, 0, 0, 0.22);
+
+  /* ---- Text ---- */
+  --text-primary: #1E293B;
+  --text-secondary: #475569;
+  --text-tertiary: #94A3B8;
+  --text-inverse: #F0F4FF;
+
+  /* ---- Spectral accents (deeper for contrast on white) ---- */
+  --spectral-1: #7C3AED;
+  --spectral-2: #0284C7;
+  --spectral-3: #059669;
+  --spectral-4: #DB2777;
+  --spectral-5: #EA580C;
+
+  /* ---- Glows ---- */
+  --glow-violet: rgba(124, 58, 237, 0.15);
+  --glow-sky: rgba(2, 132, 199, 0.15);
+  --glow-emerald: rgba(5, 150, 105, 0.15);
+
+  /* ---- Ghost White becomes dark for emphasis ---- */
+  --ghost-white: #0F172A;
+
+  /* ---- Contextual ---- */
+  --surface-card: #FFFFFF;
+  --text-muted: #94A3B8;
+
+  /* ---- Overlays ---- */
+  --backdrop-color: rgba(15, 23, 42, 0.6);
+  --navbar-frosted: rgba(248, 250, 252, 0.85);
+  --drawer-backdrop: rgba(15, 23, 42, 0.5);
+  --code-bg: #0A0E18;
+  --code-header-bg: rgba(255, 255, 255, 0.03);
+  --code-btn-hover: rgba(255, 255, 255, 0.05);
+
+  /* ---- Shadows (lighter) ---- */
+  --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-2: 0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-3: 0 8px 32px rgba(0, 0, 0, 0.1), 0 2px 8px rgba(0, 0, 0, 0.06);
+
+  /* ---- Particles ---- */
+  --particle-color: rgba(124, 58, 237, 0.3);
+}
+
+/* Light theme body background */
+[data-theme="light"] body {
+  background-color: var(--abyss);
+  background-image:
+    radial-gradient(
+      ellipse 80% 50% at 50% -10%,
+      rgba(124, 58, 237, 0.04) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 60% 40% at 50% 110%,
+      rgba(2, 132, 199, 0.03) 0%,
+      transparent 60%
+    );
+}
+
+/* ----------------------------------------------------------
    Background Texture
    ---------------------------------------------------------- */
 body {
@@ -195,24 +294,19 @@ body {
 .elevation-1 {
   background: var(--surface);
   border: 1px solid var(--border-ghost);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-1);
 }
 
 .elevation-2 {
   background: var(--surface-raised);
   border: 1px solid var(--border-subtle);
-  box-shadow:
-    0 4px 16px rgba(0, 0, 0, 0.5),
-    0 1px 0 var(--border-soft) inset;
+  box-shadow: var(--shadow-2);
 }
 
 .elevation-3 {
   background: var(--surface-float);
   border: 1px solid var(--border-soft);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.6),
-    0 2px 8px rgba(0, 0, 0, 0.4),
-    0 1px 0 var(--border-medium) inset;
+  box-shadow: var(--shadow-3);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 }

@@ -16,7 +16,7 @@
 
 /* ---- Frosted State ---- */
 .frosted {
-  background: rgba(8, 12, 21, 0.8);
+  background: var(--navbar-frosted);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border-bottom-color: var(--border-ghost);
@@ -154,7 +154,7 @@
   position: fixed;
   inset: 0;
   z-index: 199;
-  background: rgba(5, 8, 15, 0.7);
+  background: var(--drawer-backdrop);
 }
 
 .drawerLink {
