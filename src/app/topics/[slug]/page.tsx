@@ -11,6 +11,7 @@ import {
 import { getDomainIcon } from "@/lib/domain-icons";
 import { CheatsheetSection } from "@/components/ui/Cheatsheet";
 import { TopicListClient } from "./TopicListClient";
+import { ExportButton } from "@/components/ui/ExportButton";
 import styles from "./topic.module.css";
 
 interface PageProps {
@@ -96,6 +97,12 @@ export default async function TopicPage({ params }: PageProps) {
         </div>
 
         <p className={styles.overview}>{domain.description}</p>
+
+        <ExportButton
+          variant="domain"
+          domainSlug={slug}
+          domainLabel={domain.label}
+        />
 
         {/* Cheatsheet Preview */}
         {cheatsheet && cheatsheet.sections.length > 0 && (

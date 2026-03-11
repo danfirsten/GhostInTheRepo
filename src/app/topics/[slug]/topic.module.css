@@ -274,3 +274,45 @@
     max-width: 720px;
   }
 }
+
+/* ---- Print Mode ---- */
+@media print {
+  .layout {
+    display: block !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+
+  .toc {
+    display: none !important;
+  }
+
+  .breadcrumb {
+    display: none !important;
+  }
+
+  .title {
+    color: #1a1a2e !important;
+  }
+
+  .categoryLabel {
+    color: #7c3aed !important;
+  }
+
+  .statsBar {
+    color: #4a4a5a !important;
+    border-bottom-color: #d0d0d0 !important;
+  }
+
+  .overview {
+    color: #4a4a5a !important;
+  }
+
+  .sectionLabel {
+    color: #7c3aed !important;
+  }
+
+  .content {
+    max-width: 100% !important;
+  }
+}

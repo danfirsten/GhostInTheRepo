@@ -58,3 +58,47 @@
   font-size: 0.875rem;
   color: var(--text-secondary);
 }
+
+/* ---- Print Mode ---- */
+@media print {
+  .section {
+    background: #ffffff !important;
+    border: 1px solid #d0d0d0 !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .section:hover {
+    border-color: #d0d0d0 !important;
+    box-shadow: none !important;
+  }
+
+  .sectionHeader {
+    color: #7c3aed !important;
+    border-bottom-color: #d0d0d0 !important;
+    font-size: 9pt !important;
+  }
+
+  .entry {
+    padding: 4px 8px !important;
+  }
+
+  .entry:hover {
+    background: inherit !important;
+  }
+
+  .entry:hover .command {
+    color: #0369a1 !important;
+  }
+
+  .command {
+    color: #0369a1 !important;
+    font-size: 9pt !important;
+  }
+
+  .description {
+    color: #1a1a2e !important;
+    font-size: 9pt !important;
+  }
+}

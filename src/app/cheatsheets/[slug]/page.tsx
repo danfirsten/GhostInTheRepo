@@ -6,6 +6,7 @@ import { CheatsheetSection } from "@/components/ui/Cheatsheet";
 import { ContentActions } from "@/components/ui/ContentActions/ContentActions";
 import { SignInCallout } from "@/components/ui/SignInCallout/SignInCallout";
 import { CheatsheetActions } from "./CheatsheetClient";
+import { ExportButton } from "@/components/ui/ExportButton";
 import styles from "./cheatsheet.module.css";
 
 interface PageProps {
@@ -45,6 +46,7 @@ export default async function CheatsheetPage({ params }: PageProps) {
           <div className={styles.cheatsheetLabel}>Cheatsheet</div>
         </div>
         <CheatsheetActions cheatsheet={cheatsheet} />
+        <ExportButton variant="cheatsheet" />
       </div>
 
       <div className={styles.sectionGrid}>

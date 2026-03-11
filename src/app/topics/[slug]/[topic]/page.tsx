@@ -23,6 +23,7 @@ import { ContentActions } from "@/components/ui/ContentActions/ContentActions";
 import { SignInCallout } from "@/components/ui/SignInCallout/SignInCallout";
 import { TopicQuiz } from "@/components/ui/TopicQuiz";
 import { TopicNotes } from "@/components/ui/TopicNotes";
+import { ExportButton } from "@/components/ui/ExportButton";
 import { extractHeadings } from "@/lib/markdown/extract-headings";
 import { ReadingProgress } from "./ReadingProgress";
 import { TableOfContents } from "./TableOfContents";
@@ -125,6 +126,11 @@ export default async function TopicContentPage({ params }: PageProps) {
             <h1 className={styles.title}>{title}</h1>
             {subtitle && <p className={styles.subtitle}>{subtitle}</p>}
             <hr className={styles.hr} />
+            <ExportButton
+              variant="topic"
+              domainSlug={slug}
+              domainLabel={domain?.label}
+            />
           </header>
 
           <div className={styles.prose}>{mdxContent}</div>

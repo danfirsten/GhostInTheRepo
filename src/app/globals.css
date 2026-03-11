@@ -445,12 +445,14 @@ body {
 }
 
 /* ----------------------------------------------------------
-   Print Mode (data-print attribute + @media print)
+   Print Mode — Light theme for PDF export / printing
    ---------------------------------------------------------- */
+
+/* Data-print attribute (used by cheatsheet toggle) */
 [data-print="true"] body {
   background: #ffffff !important;
   background-image: none !important;
-  color: #000000;
+  color: #1a1a2e;
 }
 
 [data-print="true"] nav,
@@ -459,14 +461,245 @@ body {
 }
 
 @media print {
+  /* ---- Global Reset for Print ---- */
+  :root {
+    --void: #ffffff;
+    --abyss: #ffffff;
+    --deep: #f8f9fa;
+    --surface: #f0f2f5;
+    --surface-raised: #e8eaed;
+    --surface-float: #e0e2e6;
+
+    --border-ghost: rgba(0, 0, 0, 0.08);
+    --border-subtle: rgba(0, 0, 0, 0.12);
+    --border-soft: rgba(0, 0, 0, 0.18);
+    --border-medium: rgba(0, 0, 0, 0.25);
+
+    --text-primary: #1a1a2e;
+    --text-secondary: #4a4a5a;
+    --text-tertiary: #6b6b7b;
+    --text-inverse: #ffffff;
+
+    --spectral-1: #7c3aed;
+    --spectral-2: #0369a1;
+    --spectral-3: #059669;
+    --spectral-4: #db2777;
+    --spectral-5: #d97706;
+
+    --ghost-white: #1a1a2e;
+
+    --glow-violet: transparent;
+    --glow-sky: transparent;
+    --glow-emerald: transparent;
+
+    color-scheme: light;
+  }
+
+  /* ---- Body ---- */
   body {
     background: #ffffff !important;
     background-image: none !important;
-    color: #000000 !important;
+    color: #1a1a2e !important;
+    font-size: 11pt;
+    line-height: 1.5;
   }
 
+  /* ---- Hide Non-Print Elements ---- */
   nav,
-  footer {
+  footer,
+  .progressBar,
+  [data-export-hide] {
     display: none !important;
+  }
+
+  /* ---- Links — show URL in brackets ---- */
+  a {
+    color: #0369a1 !important;
+    text-decoration: underline !important;
+  }
+
+  /* ---- Headings ---- */
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+    break-after: avoid;
+    color: #1a1a2e !important;
+  }
+
+  /* ---- Code Blocks ---- */
+  pre {
+    background: #f5f5f5 !important;
+    border: 1px solid #d0d0d0 !important;
+    color: #1a1a2e !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    overflow: visible !important;
+    white-space: pre-wrap !important;
+    word-wrap: break-word !important;
+    font-size: 9pt !important;
+    padding: 8pt !important;
+    border-radius: 4px !important;
+    box-shadow: none !important;
+  }
+
+  pre code {
+    color: #1a1a2e !important;
+    background: none !important;
+    font-size: 9pt !important;
+  }
+
+  /* Shiki syntax token overrides for print */
+  pre code span[style*="color:#A78BFA"],
+  pre code span[style*="color: #A78BFA"] {
+    color: #7c3aed !important; /* violet keywords → darker purple */
+  }
+  pre code span[style*="color:#7DD3FC"],
+  pre code span[style*="color: #7DD3FC"] {
+    color: #0369a1 !important; /* sky → dark blue */
+  }
+  pre code span[style*="color:#34D399"],
+  pre code span[style*="color: #34D399"] {
+    color: #059669 !important; /* emerald strings → darker green */
+  }
+  pre code span[style*="color:#F472B6"],
+  pre code span[style*="color: #F472B6"] {
+    color: #db2777 !important; /* pink → darker pink */
+  }
+  pre code span[style*="color:#FB923C"],
+  pre code span[style*="color: #FB923C"] {
+    color: #d97706 !important; /* amber → darker amber */
+  }
+  pre code span[style*="color:#F0F4FF"],
+  pre code span[style*="color: #F0F4FF"] {
+    color: #1a1a2e !important; /* ghost-white → dark */
+  }
+  pre code span[style*="color:#9AA3B5"],
+  pre code span[style*="color: #9AA3B5"] {
+    color: #4a4a5a !important; /* gray → darker gray */
+  }
+  pre code span[style*="color:#E8EDF7"],
+  pre code span[style*="color: #E8EDF7"] {
+    color: #1a1a2e !important; /* light text → dark */
+  }
+
+  /* Inline code */
+  code {
+    background: #f0f0f0 !important;
+    color: #0369a1 !important;
+    border: 1px solid #e0e0e0 !important;
+    padding: 1px 4px !important;
+    border-radius: 3px !important;
+  }
+
+  pre code {
+    border: none !important;
+    padding: 0 !important;
+  }
+
+  /* ---- Tables ---- */
+  table {
+    page-break-inside: auto;
+    break-inside: auto;
+    border-collapse: collapse !important;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  th {
+    background: #f0f2f5 !important;
+    color: #1a1a2e !important;
+    border-bottom: 2px solid #333 !important;
+    font-size: 9pt !important;
+  }
+
+  td {
+    color: #1a1a2e !important;
+    border-bottom: 1px solid #d0d0d0 !important;
+    font-size: 10pt !important;
+  }
+
+  tbody tr:nth-child(even) {
+    background: #f8f9fa !important;
+  }
+
+  tbody tr:hover {
+    background: inherit !important;
+  }
+
+  /* ---- Blockquotes ---- */
+  blockquote {
+    border-left: 3px solid #7c3aed !important;
+    color: #4a4a5a !important;
+    padding-left: 12pt !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* ---- Images ---- */
+  img {
+    max-width: 100% !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* ---- Prevent orphaned headings ---- */
+  h2, h3, h4 {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  /* ---- Page margins ---- */
+  @page {
+    margin: 0.75in;
+    size: letter;
+  }
+
+  @page :first {
+    margin-top: 0.5in;
+  }
+
+  /* ---- Animations — kill all ---- */
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .reveal,
+  .reveal-label,
+  .reveal-title {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  /* ---- Elevation — flatten for print ---- */
+  .elevation-0,
+  .elevation-1,
+  .elevation-2,
+  .elevation-3 {
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    background: #ffffff !important;
+    border-color: #d0d0d0 !important;
+  }
+
+  /* ---- Ghost branding header for printed pages ---- */
+  body::before {
+    content: "Ghost in the Repo";
+    display: block;
+    font-size: 9pt;
+    color: #7c3aed;
+    text-align: center;
+    padding-bottom: 8pt;
+    border-bottom: 1px solid #d0d0d0;
+    margin-bottom: 16pt;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
   }
 }

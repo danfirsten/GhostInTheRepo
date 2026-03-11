@@ -496,3 +496,86 @@
     padding: var(--space-2) var(--space-3);
   }
 }
+
+/* ---- Print Mode ---- */
+@media print {
+  .layout {
+    display: block !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+
+  .toc {
+    display: none !important;
+  }
+
+  .backLink {
+    display: none !important;
+  }
+
+  .meta {
+    color: #4a4a5a !important;
+  }
+
+  .title {
+    color: #1a1a2e !important;
+    font-size: 22pt !important;
+  }
+
+  .subtitle {
+    color: #4a4a5a !important;
+  }
+
+  .prose h2 {
+    color: #1a1a2e !important;
+    border-left-color: #7c3aed !important;
+    font-size: 16pt !important;
+    margin-top: 20pt !important;
+    page-break-after: avoid;
+  }
+
+  .prose h3 {
+    color: #1a1a2e !important;
+    font-size: 12pt !important;
+    page-break-after: avoid;
+  }
+
+  .prose p,
+  .prose li {
+    color: #1a1a2e !important;
+    font-size: 10.5pt !important;
+    line-height: 1.6 !important;
+  }
+
+  .prose strong {
+    color: #1a1a2e !important;
+  }
+
+  .prose a {
+    color: #0369a1 !important;
+  }
+
+  .prose blockquote {
+    border-left-color: #7c3aed !important;
+  }
+
+  .prose blockquote p {
+    color: #4a4a5a !important;
+  }
+
+  .prevNext {
+    display: none !important;
+  }
+
+  .related {
+    display: none !important;
+  }
+
+  .content {
+    max-width: 100% !important;
+  }
+
+  .progressBar {
+    display: none !important;
+  }
+}
