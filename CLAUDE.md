@@ -30,9 +30,9 @@ All design and architecture specs live in `docs/`:
 - `docs/brainstorm/UI-UX/05-motion-and-interactions.md` — Easing curves, page load sequence timing, scroll reveals, hover interactions, particle field, reduced motion.
 - `docs/research/README.md` — Table of contents for all 14 knowledge domains and their subtopics.
 
-## Content Structure (14 Domains)
+## Content Structure (15 Domains)
 
-The research content in `docs/research/` is organized into 14 numbered directories (`01-fundamentals` through `14-hacker-mindset`). Each contains multiple markdown files covering subtopics. The domain registry in the app maps these to URL slugs, Phosphor icons, and spectral accent colors.
+The research content in `docs/research/` is organized into 15 numbered directories (`01-fundamentals` through `15-startups-and-founders`). Each contains multiple markdown files covering subtopics. The domain registry in the app maps these to URL slugs, Phosphor icons, and spectral accent colors.
 
 ## Design System Key Values
 

@@ -81,7 +81,7 @@ export function TopicsClient({ domains, topicsByDomain }: TopicsClientProps) {
         <div className={styles.main}>
           <h1 className={styles.pageTitle}>Topics</h1>
           <p className={styles.pageSubtitle}>
-            14 domains. Hundreds of subtopics. Pick a domain or browse them all.
+            15 domains. Hundreds of subtopics. Pick a domain or browse them all.
           </p>
           <div className={styles.grid}>
             {filteredDomains.map((domain) => {

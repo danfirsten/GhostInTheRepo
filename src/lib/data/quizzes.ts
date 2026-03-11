@@ -2791,6 +2791,221 @@ const QUIZZES: TopicQuiz[] = [
       },
     ],
   },
+
+  // ── Startups ────────────────────────────────────────────────────
+  {
+    domainSlug: "startups",
+    topicSlug: "founding-and-ideation",
+    questions: [
+      {
+        id: "startups-founding-q1",
+        question:
+          'What percentage of surveyed users saying "very disappointed" without your product indicates product-market fit?',
+        options: ["40%", "20%", "60%", "80%"],
+        correctIndex: 0,
+        explanation:
+          "Sean Ellis' product-market fit survey suggests that if 40% or more of users say they'd be 'very disappointed' without your product, you've likely achieved product-market fit. Below that threshold, you should iterate on your value proposition before scaling.",
+      },
+      {
+        id: "startups-founding-q2",
+        question: 'What does the "Mom Test" help founders avoid?',
+        options: [
+          "Asking leading questions that produce false validation",
+          "Building too slowly",
+          "Hiring too early",
+          "Raising too much money",
+        ],
+        correctIndex: 0,
+        explanation:
+          "The Mom Test (by Rob Fitzpatrick) teaches founders to ask about customers' actual behavior and problems rather than pitching their idea and asking 'would you use this?' Even your mom would say yes to be supportive — hence the name. Good questions focus on past behavior, not hypothetical futures.",
+      },
+      {
+        id: "startups-founding-q3",
+        question:
+          "What is the recommended approach to technology selection for an MVP?",
+        options: [
+          "Use the newest frameworks",
+          "Choose boring, proven technology that ships fastest",
+          "Build custom infrastructure",
+          "Use microservices from day one",
+        ],
+        correctIndex: 1,
+        explanation:
+          "For MVPs, speed to market matters more than technical sophistication. Boring, proven technology (e.g., Rails, Django, Next.js, PostgreSQL) lets you ship faster with fewer surprises. Custom infrastructure and microservices add complexity that slows down early-stage iteration when you're still searching for product-market fit.",
+      },
+    ],
+  },
+  {
+    domainSlug: "startups",
+    topicSlug: "business-and-finance",
+    questions: [
+      {
+        id: "startups-finance-q1",
+        question: "What is a healthy LTV:CAC ratio for a SaaS business?",
+        options: ["1:1", "2:1", "3:1 or better", "10:1"],
+        correctIndex: 2,
+        explanation:
+          "A 3:1 LTV:CAC ratio is the widely-accepted benchmark for a healthy SaaS business. It means you earn $3 in lifetime value for every $1 spent acquiring a customer. Below 3:1 suggests unprofitable growth; well above 3:1 may indicate you're under-investing in growth.",
+      },
+      {
+        id: "startups-finance-q2",
+        question:
+          "What does Net Revenue Retention (NRR) above 100% indicate?",
+        options: [
+          "Customer churn is zero",
+          "Existing customers are growing revenue even without new sales",
+          "The company is profitable",
+          "CAC is decreasing",
+        ],
+        correctIndex: 1,
+        explanation:
+          "NRR above 100% means that expansion revenue from existing customers (upgrades, additional seats, usage growth) exceeds the revenue lost to churn and contraction. Top SaaS companies achieve 120-140% NRR, meaning they'd still grow even if they stopped acquiring new customers.",
+      },
+      {
+        id: "startups-finance-q3",
+        question:
+          "In a SAFE with a valuation cap, what happens if the next round's valuation is below the cap?",
+        options: [
+          "The SAFE converts at the cap",
+          "The SAFE converts at the actual valuation",
+          "The investor gets their money back",
+          "The SAFE becomes void",
+        ],
+        correctIndex: 1,
+        explanation:
+          "A valuation cap sets the maximum valuation at which a SAFE converts to equity — it protects the investor if the company's valuation increases significantly. If the actual round valuation is below the cap, the SAFE converts at the actual (lower) valuation, since the cap is a ceiling, not a floor.",
+      },
+    ],
+  },
+  {
+    domainSlug: "startups",
+    topicSlug: "legal-and-equity",
+    questions: [
+      {
+        id: "startups-legal-q1",
+        question:
+          "Why is the 83(b) election critical for startup founders receiving restricted stock?",
+        options: [
+          "It eliminates all taxes",
+          "It allows being taxed at grant-time value instead of vesting-time value",
+          "It converts stock to options",
+          "It prevents dilution",
+        ],
+        correctIndex: 1,
+        explanation:
+          "The 83(b) election lets founders pay taxes on restricted stock at its current (usually very low) fair market value at the time of grant, rather than at each vesting milestone when the stock may be worth much more. It must be filed with the IRS within 30 days of the stock grant — missing this deadline can result in enormous tax bills as the company grows.",
+      },
+      {
+        id: "startups-legal-q2",
+        question: "What is the standard vesting schedule for startup equity?",
+        options: [
+          "2-year vest with 6-month cliff",
+          "4-year vest with 1-year cliff",
+          "3-year vest with no cliff",
+          "5-year vest with 2-year cliff",
+        ],
+        correctIndex: 1,
+        explanation:
+          "The industry-standard vesting schedule is 4 years with a 1-year cliff. During the cliff period, no equity vests. After the cliff, 25% vests immediately, and the remaining 75% vests monthly (or quarterly) over the next 3 years. This protects the company from short-tenure departures while providing meaningful incentive alignment.",
+      },
+      {
+        id: "startups-legal-q3",
+        question:
+          "Why do VCs typically require startups to be Delaware C-Corps?",
+        options: [
+          "Lower taxes",
+          "Familiar legal framework for equity issuance and preferred shares",
+          "It's the cheapest option",
+          "Delaware has no corporate taxes",
+        ],
+        correctIndex: 1,
+        explanation:
+          "Delaware's Court of Chancery has decades of well-established case law around corporate governance, preferred stock rights, and fiduciary duties. VCs and their lawyers rely on this predictability. C-Corp status (vs LLC or S-Corp) allows for multiple share classes (common vs preferred), unlimited shareholders, and is the standard structure for venture-backed companies.",
+      },
+    ],
+  },
+  {
+    domainSlug: "startups",
+    topicSlug: "product-and-growth",
+    questions: [
+      {
+        id: "startups-growth-q1",
+        question: "What is Product-Led Growth (PLG)?",
+        options: [
+          "Hiring more salespeople",
+          "Growth driven by product usage rather than sales teams",
+          "Building more features faster",
+          "Spending more on marketing",
+        ],
+        correctIndex: 1,
+        explanation:
+          "Product-Led Growth is a go-to-market strategy where the product itself drives acquisition, activation, and expansion. Users can try, adopt, and derive value from the product with minimal sales involvement. Examples include Slack, Dropbox, and Figma, where free/freemium usage naturally converts to paid plans as users hit usage limits or need team features.",
+      },
+      {
+        id: "startups-growth-q2",
+        question: "What is the primary purpose of feature flags?",
+        options: [
+          "Making code more complex",
+          "Decoupling deployment from release and enabling gradual rollouts",
+          "Improving test coverage",
+          "Reducing bundle size",
+        ],
+        correctIndex: 1,
+        explanation:
+          "Feature flags (or feature toggles) let you deploy code to production without exposing it to all users. This enables gradual rollouts (1% -> 10% -> 100%), A/B testing, instant kill switches for problematic features, and beta programs. They decouple the act of deploying code from the business decision of releasing a feature.",
+      },
+      {
+        id: "startups-growth-q3",
+        question: "What is Answer Engine Optimization (AEO)?",
+        options: [
+          "Traditional SEO techniques",
+          "Optimizing content to appear in AI-powered search summaries",
+          "Improving page load speed",
+          "A/B testing landing pages",
+        ],
+        correctIndex: 1,
+        explanation:
+          "Answer Engine Optimization is the practice of structuring content so it's surfaced by AI-powered search tools (ChatGPT, Perplexity, Google AI Overviews). Unlike traditional SEO which optimizes for link rankings, AEO focuses on providing clear, authoritative answers that AI models can extract and cite. It's an emerging discipline as AI search grows.",
+      },
+    ],
+  },
+  {
+    domainSlug: "startups",
+    topicSlug: "team-and-infrastructure",
+    questions: [
+      {
+        id: "startups-team-q1",
+        question:
+          "What is the median equity grant for a startup's first engineer?",
+        options: ["0.1%", "~1%", "5%", "10%"],
+        correctIndex: 1,
+        explanation:
+          "The median equity grant for a startup's first engineer is approximately 1%, though the range varies from 0.5% to 2% depending on stage, salary trade-off, and the engineer's seniority. This typically comes as stock options (ISOs) with a 4-year vesting schedule and 1-year cliff. Later hires receive progressively smaller grants.",
+      },
+      {
+        id: "startups-team-q2",
+        question: 'What does "hiring for slope over intercept" mean?',
+        options: [
+          "Hiring experienced people only",
+          "Prioritizing learning velocity over current knowledge",
+          "Hiring only from top universities",
+          "Offering steeper equity vesting",
+        ],
+        correctIndex: 1,
+        explanation:
+          "Hiring for slope (learning rate) over intercept (current skill level) means valuing a candidate's growth trajectory and ability to learn quickly over their existing credentials or experience. Early-stage startups benefit from fast learners who can adapt as the company pivots, rather than specialists who may be rigid in their approach.",
+      },
+      {
+        id: "startups-team-q3",
+        question:
+          "What percentage of cloud spend is typically wasted on idle or over-provisioned resources?",
+        options: ["5-10%", "15-20%", "30-35%", "50%+"],
+        correctIndex: 2,
+        explanation:
+          "Industry reports consistently show that 30-35% of cloud spend is wasted on idle instances, over-provisioned resources, and forgotten services. For startups, this can significantly shorten runway. Right-sizing instances, using spot/preemptible instances, auto-scaling, and regularly auditing cloud costs are essential practices for capital-efficient infrastructure.",
+      },
+    ],
+  },
 ];
 
 export function getQuizForTopic(

@@ -40,7 +40,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     rarity: "uncommon",
     icon: "Binoculars",
     hidden: false,
-    unlockHint: "Visit all 14 domain hubs",
+    unlockHint: "Visit all 15 domain hubs",
   },
   {
     id: "poltergeist-cartographer",
@@ -238,7 +238,7 @@ export const BADGE_DEFINITIONS: BadgeDefinition[] = [
     rarity: "legendary",
     icon: "Crown",
     hidden: false,
-    unlockHint: "Complete every piece of content across all 14 domains",
+    unlockHint: "Complete every piece of content across all 15 domains",
   },
   {
     id: "path-walker",

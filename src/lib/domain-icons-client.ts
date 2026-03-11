@@ -13,6 +13,7 @@ import {
   DeviceMobile,
   CodeBlock,
   Bug,
+  Rocket,
 } from "@phosphor-icons/react";
 import type { Icon } from "@phosphor-icons/react";
 
@@ -31,6 +32,7 @@ const domainIcons: Record<string, Icon> = {
   "mobile-dev": DeviceMobile,
   languages: CodeBlock,
   "hacker-mindset": Bug,
+  startups: Rocket,
 };
 
 export function getDomainIconClient(slug: string): Icon {

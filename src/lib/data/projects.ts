@@ -856,6 +856,130 @@ Requirements:
 - Hints section
 - Estimated time: 14-20 hours`,
   },
+
+  // ── Startups ──────────────────────────────────
+  {
+    id: "startup-financial-dashboard",
+    title: "Startup Financial Dashboard",
+    description:
+      "Build a dashboard that tracks MRR, burn rate, runway, and CAC/LTV metrics with interactive charts and scenario modeling.",
+    difficulty: "beginner",
+    estimatedHours: 10,
+    domainSlug: "startups",
+    topicSlug: "business-and-finance",
+    prerequisites: [
+      {
+        topicSlug: "business-and-finance",
+        domainSlug: "startups",
+        title: "Business & Finance",
+      },
+    ],
+    skills: [
+      "Financial modeling",
+      "Data visualization",
+      "SaaS metrics",
+      "React/charting",
+    ],
+    tags: ["saas", "metrics", "dashboard", "finance"],
+    llmPrompt: `You are a startup finance instructor. Generate a complete project document for a "Startup Financial Dashboard" assignment.
+
+Requirements:
+- Title, course context (Startups / Business & Finance)
+- Project overview: understanding key SaaS and startup financial metrics by building an interactive dashboard
+- Learning objectives (5-7 bullet points covering MRR, burn rate, runway, CAC, LTV, unit economics, scenario planning)
+- Functional requirements: MRR waterfall chart showing new, expansion, contraction, and churned revenue; burn rate tracker with monthly cash outflow breakdown; runway projection calculator based on current burn and cash balance; CAC/LTV calculator with cohort-based inputs; scenario modeling tool allowing users to adjust growth rate, churn, and hiring plans to see projected runway and revenue; monthly/quarterly toggle for all views; export data as CSV
+- Technical requirements: React or Next.js with a charting library (Recharts, Chart.js, or D3), responsive layout, mock data seeding for demo mode
+- Deliverables: source code, README with setup instructions, sample dataset, 1-page write-up explaining the metrics and what healthy values look like
+- Success criteria / grading rubric (4 tiers: basic pass, good, excellent, exceptional)
+- Stretch goals: connect to Stripe API for real MRR data, investor-ready PDF export, benchmark comparison against industry medians, multi-currency support
+- Hints section (3-5 hints without giving away the solution)
+- Estimated time: 10-15 hours`,
+  },
+  {
+    id: "cap-table-simulator",
+    title: "Cap Table Simulator",
+    description:
+      "Simulate equity dilution across funding rounds — model SAFEs, priced rounds, option pools, and visualize ownership changes over time.",
+    difficulty: "intermediate",
+    estimatedHours: 12,
+    domainSlug: "startups",
+    topicSlug: "legal-and-equity",
+    prerequisites: [
+      {
+        topicSlug: "legal-and-equity",
+        domainSlug: "startups",
+        title: "Legal & Equity",
+      },
+      {
+        topicSlug: "business-and-finance",
+        domainSlug: "startups",
+        title: "Business & Finance",
+      },
+    ],
+    skills: [
+      "Equity math",
+      "SAFE conversion",
+      "Dilution modeling",
+      "Financial visualization",
+    ],
+    tags: ["equity", "fundraising", "simulation", "finance"],
+    llmPrompt: `You are a startup law and finance instructor. Generate a complete project document for a "Cap Table Simulator" assignment.
+
+Requirements:
+- Title, course context (Startups / Legal & Equity)
+- Project overview: understanding equity mechanics by building a simulator that models real funding scenarios
+- Learning objectives (5-7 bullet points covering cap tables, SAFE mechanics, priced round mechanics, dilution, option pools, pro-rata rights, waterfall analysis)
+- Functional requirements: model founding equity splits with vesting schedules; SAFE conversion calculator supporting valuation caps, discounts, and MFN provisions; priced round modeler with pre-money valuation, new investment amount, and resulting share prices; option pool creation and expansion with dilution impact; pro-rata rights calculator for existing investors; ownership visualization showing pie charts and stacked area charts across rounds; dilution waterfall table showing each stakeholder's ownership percentage after each event; support for at least 4 rounds (seed SAFE, Series A, option pool expansion, Series B)
+- Technical requirements: React or Next.js, visualization library for ownership charts, form-based inputs with real-time recalculation
+- Deliverables: source code, sample scenarios (solo founder, 2 co-founders with angel + seed + Series A), architecture document, 1-page explainer on SAFE conversion mechanics
+- Success criteria / grading rubric (4 tiers)
+- Stretch goals: convertible note support, liquidation preference modeling, 409A valuation estimator, PDF export of cap table snapshots
+- Hints section
+- Estimated time: 12-18 hours`,
+  },
+  {
+    id: "lean-validation-toolkit",
+    title: "Lean Validation Toolkit",
+    description:
+      "Build a full-stack toolkit that helps founders validate startup ideas — landing page builder, email capture, fake-door testing, and analytics dashboard to measure interest signals.",
+    difficulty: "advanced",
+    estimatedHours: 20,
+    domainSlug: "startups",
+    topicSlug: "founding-and-ideation",
+    prerequisites: [
+      {
+        topicSlug: "founding-and-ideation",
+        domainSlug: "startups",
+        title: "Founding & Ideation",
+      },
+      {
+        topicSlug: "product-and-growth",
+        domainSlug: "startups",
+        title: "Product & Growth",
+      },
+    ],
+    skills: [
+      "Full-stack development",
+      "Landing page design",
+      "Analytics",
+      "A/B testing",
+      "Lean methodology",
+    ],
+    tags: ["validation", "lean-startup", "full-stack", "analytics"],
+    llmPrompt: `You are a startup methodology instructor. Generate a complete project document for a "Lean Validation Toolkit" assignment.
+
+Requirements:
+- Title, course context (Startups / Founding & Ideation)
+- Project overview: applying lean startup principles by building a toolkit that helps founders validate ideas before writing production code
+- Learning objectives (5-7 bullet points covering lean validation, landing page testing, fake-door experiments, conversion metrics, signal vs noise in early data, MVP definition, hypothesis-driven development)
+- Functional requirements: landing page template builder with drag-and-drop sections (hero, features, pricing, CTA); email capture forms with confirmation and basic drip sequence; fake-door testing — create buttons/links for features that don't exist yet, track clicks as interest signals; A/B testing framework allowing two variants of headline, CTA, or pricing; analytics dashboard showing unique visitors, email signups, fake-door clicks, conversion rates, and traffic sources; experiment timeline view showing when tests started and ended with results; shareable results page for co-founders or advisors
+- Technical requirements: full-stack (Next.js or similar), database for analytics events, server-side rendering for landing pages, no third-party analytics (build your own event tracking)
+- Deliverables: source code, 3 sample landing pages for different startup ideas, analytics walkthrough, 2-page write-up on lean validation methodology and how the toolkit supports it
+- Success criteria / grading rubric (4 tiers)
+- Stretch goals: custom domain support, Stripe integration for payment intent validation, social proof widgets (fake testimonials generator for testing), integration with Google Ads for traffic acquisition
+- Hints section
+- Estimated time: 20-28 hours`,
+  },
 ];
 
 export function getAllProjects(): Project[] {

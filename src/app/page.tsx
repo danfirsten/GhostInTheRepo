@@ -42,7 +42,7 @@ export default function Home() {
         </DomainGrid>
         <div className={styles.viewAll}>
           <Button variant="secondary" href="/topics">
-            View All 14 Domains →
+            View All 15 Domains →
           </Button>
         </div>
       </section>
@@ -63,7 +63,7 @@ export default function Home() {
               codebase, any language, any stack.
             </p>
             <p>
-              14 domains. Hundreds of subtopics. Zero fluff. This is the
+              15 domains. Hundreds of subtopics. Zero fluff. This is the
               reference you wish existed when you were starting out.
             </p>
           </div>

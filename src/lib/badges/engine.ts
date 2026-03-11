@@ -105,7 +105,7 @@ function evaluateCondition(badgeId: string, ctx: BadgeCheckContext): boolean {
       const allDone = Object.values(ctx.domainCompletion).every(
         (d) => d.total > 0 && d.completed >= d.total
       );
-      return allDone && Object.keys(ctx.domainCompletion).length >= 14;
+      return allDone && Object.keys(ctx.domainCompletion).length >= 15;
     }
 
     case "path-walker":

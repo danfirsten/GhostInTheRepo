@@ -123,6 +123,21 @@ const learningPaths: LearningPath[] = [
       },
     ],
   },
+  {
+    id: "technical-founder",
+    name: "Technical Founder",
+    description:
+      "From engineer to founder — business fundamentals, fundraising, legal, product, and growth for builders who want to start their own thing.",
+    nodes: [
+      { domainSlug: "software-engineering", label: "Software Engineering" },
+      { domainSlug: "cloud-devops", label: "Cloud &amp; DevOps" },
+      { domainSlug: "startups", label: "Startups &amp; Founders" },
+    ],
+    edges: [
+      { from: "software-engineering", to: "cloud-devops", type: "prerequisite" },
+      { from: "cloud-devops", to: "startups", type: "prerequisite" },
+    ],
+  },
 ];
 
 export function getAllLearningPaths(): LearningPath[] {

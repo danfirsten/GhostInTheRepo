@@ -18,6 +18,7 @@ export const dirToSlug: Record<string, string> = {
   "11-ai-ml": "ai-ml",
   "13-languages": "languages",
   "14-hacker-mindset": "hacker-mindset",
+  "15-startups-and-founders": "startups",
 };
 
 export const slugToDir: Record<string, string> = Object.fromEntries(
@@ -163,6 +164,16 @@ const domains: Domain[] = [
     description:
       "CTFs, reverse engineering, the engineering mindset — thinking like someone who breaks things to understand them.",
     color: "spectral-4",
+    subtopicCount: 0,
+  },
+  {
+    id: "d-15",
+    slug: "startups",
+    label: "Startups & Founders",
+    icon: "Rocket",
+    description:
+      "Ideation, fundraising, equity, product-market fit, growth — everything engineers need to build their own thing.",
+    color: "spectral-5",
     subtopicCount: 0,
   },
 ];
